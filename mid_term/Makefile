@@ -73,7 +73,7 @@ GIMlibs: libGIMI.a libMaCI.a libGIMutils.a libSerialLinkClient.a libFSR2011Order
 ###############################################
 .PHONY: clean
 clean:
-	@rm -f *.o *.opp *.dopp $(TARGETS)
+	@rm -f *.o *.opp *.dopp $(TARGETS) astar/*.opp
 	@echo "     [LOCAL-CLEAN]"
 
 ########### Compile rules ####################
