@@ -35,45 +35,51 @@ pose2D wayPoint;
 
   int iPreviousDirection = 0;
 
-int w = 40;
-int h = 30;
-float real_w = 4.0;
-float real_h = 3.0;
+int w = 45;
+int h = 37;
+float real_w = 4.5;
+float real_h = 3.7;
 bool has_plan = false;
 unsigned int step = 0;
 vector<node> path;
-int iMap[] = {
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
-    0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
-    0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
-    0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
-    0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
-    0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
-    0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
-    0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
-    0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
-    0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
-    0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
-    0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
-    0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
-    0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
-    0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
-    0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
-    0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
-    0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
-    0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
-    0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
-    0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
-    0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
-    0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
-    0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	
+int iMap[] = {	  
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,0,0,0,1,1,1,0,
+    0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,0,0,0,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,0,0,0,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
 
   
@@ -113,12 +119,12 @@ void CJ2B2Demo::Execute()
     
     iPreviousDirection = 0;
     iPose.x = 30;
-    iPose.y = 20;
-    iPose.theta = 200;
+    iPose.y = 27;
+    iPose.theta = 0;
     
-    wayPoint.x = 9;
-    wayPoint.y = 10;
-    wayPoint.theta = 0;
+    wayPoint.x = 36;
+    wayPoint.y = 12;
+    wayPoint.theta = 270;
     
     // Start execution of parallel thread(s) (Base class name is not
     // required, it is just added in the demo for clarification
@@ -886,7 +892,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 			dPrint(1,"r_acc is: %f",r_acc);
 			dPrint(1,"a_next is: %f",a_next);
 			dPrint(1,"state_r is: %d",state_r);
-			//dPrint(1,"Step: %d", step);
+			dPrint(1,"Step: %d", step);
 			//dPrint(1,"Check Flag: %d", check_flag);
 			//dPrint(1,"Motion Flag: %d ", motion_flag);
 			//dPrint(1,"Has Plan Flag: %d", has_plan);
@@ -911,89 +917,131 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 			if (iInterface.iPositionOdometry) {
 			
 				state_r = 1;
-				//if (step < path.size()) {
+				if ( (step) < path.size()) {
 					
 				//state_r = 7;
-				MaCI::Position::CPositionData pd;
-				iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000);
-				const TPose2D *pose = pd.GetPose2D();
+					MaCI::Position::CPositionData pd;
+					iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000);
+					const TPose2D *pose = pd.GetPose2D();
 				// Need EKF
-				//node plan = path.at(step);
-				//node next_stp = path.at(step+1);
-				
-				x_present = pose->x;
-				y_present = pose->y;
-				a_present = pose->a;
-				dPrint(1,"Update Pose");
+					node plan = path.at(step);
+					node next_stp = path.at(step+1);
 					
-				x_next = 2;
-				y_next = 1;
-				a_next = M_PI;
+				
+					x_present = pose->x;
+					y_present = pose->y;
+					a_present = pose->a;
+					dPrint(1,"Update Pose");
+					
+					if(step == 0){
+						x_next = 3.6;
+						y_next = 1.2;
+						a_next = 3*(M_PI/2);
+					}else if(step == 1){
+						x_next = 3;
+						y_next = 0.5;
+						a_next = (M_PI);				
+					}else if(step == 2){
+						x_next = 2.6;
+						y_next = 1;
+						a_next = (M_PI/2);				
+					}else if(step == 3){
+						x_next = 2.1;
+						y_next = 1.4;
+						a_next = (M_PI);				
+					}	
+					
+					//A Star Starts
+					//x_next = next_stp.x;
+					//y_next = next_stp.y;
+				
+					////Set Up a_next
+					
+					//if( plan.x == next_stp.x  ){
+						//if((next_stp.y - plan.y) > 0){	
+								//a_next = (M_PI/2);
+						//} else if((next_stp.y - plan.y) < 0){
+								//a_next = ((3*M_PI/2));
+						//}
+					//}
+					
+					//if( plan.y == next_stp.y  ){
+						//if((next_stp.x - plan.x) > 0){	
+								//a_next = 0;
+						//} else if((next_stp.x - plan.x) < 0){
+								//a_next = M_PI;							
+						//}
+					//}
+									
+					//x_next = (next_stp.x * real_w)/w;
+					//y_next = (next_stp.y * real_h)/h;						
+					
+					//A Star Ends
 					
 						
-				delta_x = (x_next - x_present);
-				delta_y = (y_next - y_present);	
+					delta_x = (x_next - x_present);
+					delta_y = (y_next - y_present);	
 					
-				rho = sqrt(delta_x*delta_x + delta_y*delta_y);
-				alpha = atan2(delta_y, delta_x)-a_present;
+					rho = sqrt(delta_x*delta_x + delta_y*delta_y);
+					alpha = atan2(delta_y, delta_x)-a_present;
 				
-				if(alpha > M_PI){
+					if(alpha > M_PI){
+						
+						alpha = 2*M_PI - alpha;
+						alpha = -1 * alpha;
+					}
+				
+					if(alpha <= -1 * M_PI){
 					
-					alpha = 2*M_PI - alpha;
-					alpha = -1 * alpha;
-				}
-				
-				if(alpha <= -1 * M_PI){
-					
-					alpha = 2*M_PI + alpha;
-				}
-				
-				
-				
-				beta = -1*(a_present + alpha);
-				
-				if(beta > M_PI){
-					
-					beta = 2*M_PI - beta;
-					beta = -1 * beta;
-				}
-				
-				if(beta < -1 * M_PI){
-					
-					beta = 2*M_PI + beta;
-				}
-				
-				if( (alpha>=(-1*(M_PI/2))) && (alpha<=(M_PI/2)) ){
-					
-					r_speed = K_rho * rho;
-					r_wspeed = K_alpha * alpha + K_beta * beta;	
-				}
-				
-				else if( ( (alpha>(-1*M_PI)) && (alpha<(-1*(M_PI/2))) ) || ( (alpha>(M_PI/2)) && (alpha<=(M_PI)) ) ){
-					
-					r_speed = -1* K_rho * rho;
-					r_wspeed = K_alpha * alpha + K_beta * beta;	
-				}
-					
+						alpha = 2*M_PI + alpha;
+					}
 				
 				
-				if(r_speed >= 0.35){
-					
-					r_speed = 0.35;
-					
-				}
 				
-				if(r_wspeed >= 0.4){
-					
-					r_wspeed = 0.4;
-					
-				}
+					beta = -1*(a_present + alpha);
 				
-				if(r_wspeed <= -0.4){
+					if(beta > M_PI){
 					
-					r_wspeed = -0.4;
+						beta = 2*M_PI - beta;
+						beta = -1 * beta;
+					}
+				
+					if(beta < -1 * M_PI){
+						
+						beta = 2*M_PI + beta;
+					}
+				
+					if( (alpha>=(-1*(M_PI/2))) && (alpha<=(M_PI/2)) ){
 					
-				}
+						r_speed = K_rho * rho;
+						r_wspeed = K_alpha * alpha + K_beta * beta;	
+					}
+				
+					else if( ( (alpha>(-1*M_PI)) && (alpha<(-1*(M_PI/2))) ) || ( (alpha>(M_PI/2)) && (alpha<=(M_PI)) ) ){
+					
+						r_speed = -1* K_rho * rho;
+						r_wspeed = K_alpha * alpha + K_beta * beta;	
+					}
+					
+				
+				
+					if(r_speed >= 0.35){
+					
+						r_speed = 0.35;
+					
+					}
+				
+					if(r_wspeed >= 0.4){
+					
+						r_wspeed = 0.4;
+					
+					}
+				
+					if(r_wspeed <= -0.4){
+					
+						r_wspeed = -0.4;
+					
+					}
 				
 				
 				
@@ -1009,92 +1057,96 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 				
 				
 				
-				if( (rho <= 0.01) ) {	
-					iInterface.iMotionCtrl->SetStop();
-					ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));	
-					state_r = 2;
-					r_wspeed = 0.5;
-					r_speed = 0;
+					if( (rho <= 0.02) ) {	
+						iInterface.iMotionCtrl->SetStop();
+						ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));	
+						state_r = 2;
+						r_wspeed = 0.5;
+						r_speed = 0;
 					
-					if(a_next == (M_PI/2)){
+						if(a_next == (M_PI/2)){
 						
-						if((fabs(a_present) >= (M_PI/2)) && (fabs(a_present) <= M_PI)){
-					
-							r_wspeed = -1 * r_wspeed;
-							state_r=11;
-						}else{
-							r_wspeed = r_wspeed;
-							state_r=12;
-						}
-					}else if( a_next == (-1*(M_PI/2)) ){
-					
-						if( (fabs(a_present) > (M_PI/2)) && (fabs(a_present) <= (M_PI)) ){
-					
-							r_wspeed = r_wspeed;
-							state_r=13;
-							}else{
-					
-							r_wspeed = -1 * r_wspeed;
-							state_r=14;
-						}
-					}else if( a_next == M_PI ){
-					
-							if((a_present > 0)) {
-					
-								r_wspeed = r_wspeed;					
-								state_r=17;
-					
-							}else if((a_present < 0)) {
+							if((fabs(a_present) >= (M_PI/2)) && (fabs(a_present) <= M_PI)){
 					
 								r_wspeed = -1 * r_wspeed;
+								state_r=11;
+							}else{
+								r_wspeed = r_wspeed;
+								state_r=12;
+							}
+						}else if( a_next == (3*(M_PI/2)) ){
+					
+							if( (fabs(a_present) > (M_PI/2)) && (fabs(a_present) <= (M_PI)) ){
+					
+								r_wspeed = r_wspeed;
+								state_r=13;
+								}else{
+					
+								r_wspeed = -1 * r_wspeed;
+								state_r=14;
+							}
+						}else if( a_next == M_PI ){
+					
+								if((a_present > 0)) {
+					
+									r_wspeed = r_wspeed;					
+									state_r=15;
+					
+								}else if((a_present < 0)) {
+					
+									r_wspeed = -1 * r_wspeed;
+									state_r=16;
+								}
+						}else if( a_next == 0 ){
+					
+								if((a_present > 0)) {
+					
+								r_wspeed = -1 * r_wspeed;
+								state_r=17;
+								}else if((a_present < 0)) {
+					
+								r_wspeed = r_wspeed;
 								state_r=18;
-							}
-					}else if( a_next == 0 ){
-					
-							if((a_present > 0)) {
-					
-							r_wspeed = -1 * r_wspeed;
-							state_r=15;
-							}else if((a_present < 0)) {
-					
-							r_wspeed = r_wspeed;
-							state_r=16;
 							
-							}
-					}
+								}
+						}
 					
-					if(a_present <= 0.00){
-						a_present_2pi = a_present + (2 * M_PI);
-					}else if(a_present>0.00){
-							a_present_2pi = a_present;
-					}
+						if(a_present <= 0.00){
+							a_present_2pi = a_present + (2 * M_PI);
+						}else if(a_present>0.00){
+								a_present_2pi = a_present;
+						}
 		
-					if((a_present == -0.00 ) || (a_present == 2 * M_PI)){
-							a_present_2pi = 0;
-					}
+						if((a_present == -0.00 ) || (a_present == 2 * M_PI)){
+								a_present_2pi = 0;
+						}
 					
-					if( (a_present_2pi >= (a_next-0.1) ) && (a_present_2pi <= (a_next+0.1)) ){
+						if( (a_present_2pi >= (a_next-0.1) ) && (a_present_2pi <= (a_next+0.1)) ){
 						
-						iInterface.iMotionCtrl->SetStop();
-						ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
-						state_r = 17;						
+							iInterface.iMotionCtrl->SetStop();
+							ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+							state_r = 19;
+							step++;						
 						
-					}else{
+						}else{
 						
-						iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
-						ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));					
-						state_r = 17;
-					}
+							iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
+							ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));					
+							state_r = 20;
+						}
 					
 										
 											
+					}else{
+						iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
+						ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));	
+						state_r = 3;					
+					}
 				}else{
-					iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
-					ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));	
-					state_r = 3;					
+					has_plan = false;
 				}
-			}		
 						
+			}		
 		   
 		
 				
@@ -1102,24 +1154,24 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 	
   
 		
-		} else {
-			dPrint(1,"No MotionCtrl available - Terminating MotionDemo thread.");
-			break;
-		}
+			} else {
+				dPrint(1,"No MotionCtrl available - Terminating MotionDemo thread.");
+				break;
+			}
 
     // 5. Increment iteration counter
-    ++iterations;
+			++iterations;
 
     // 6. Round complete, we should be near an obstacle now, so enter
     // random again and Redo!
-    dPrint(1,"Round complete. Robot is stopped. %d iterations executed",
-           iterations);
-  }
+			dPrint(1,"Round complete. Robot is stopped. %d iterations executed",
+            iterations);
+		}
 
 
-  dPrint(3,"MotionDemoThread terminated.");
-  return 0;
-}
+	dPrint(3,"MotionDemoThread terminated.");
+	return 0;
+	}
 }
 
 //*****************************************************************************
