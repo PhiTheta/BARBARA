@@ -22,7 +22,25 @@
 #include <SDL/SDL_gfxPrimitives.h>
 #endif
 
+/* Steps to take in the Matrix
+30,27---Start
+35,27
+35,11
+35,5
+21,5
+21,14
+25,14
+15,6
+9,6
+5,6
+5,23
+15,23
+22,23
+22,27
+30,27---End
 
+
+*/
 struct pose2D {
 	int x;
 	int y;
@@ -32,8 +50,7 @@ struct pose2D {
 pose2D iPose;
 pose2D wayPoint;
 
-
-  int iPreviousDirection = 0;
+int iPreviousDirection = 0;
 
 int w = 45;
 int h = 37;
