@@ -40,11 +40,11 @@
 30,27---End
 */
 
-#define DIST_MARGIN		0.05
+#define DIST_MARGIN		0.02
 #define ANGLE_MARGIN	0.03
-#define MIN_WSPEED		0.05
+#define MIN_WSPEED		0.5
 #define MAX_WSPEED		0.5
-#define MAX_SPEED		0.3
+#define MAX_SPEED		0.4
 #define MAGIC_CNST		2
 
 
@@ -160,13 +160,14 @@ void CJ2B2Demo::Execute()
     iDemoActive = true;
     
     iPreviousDirection = 0;
-    iPose.x = 30;
-    iPose.y = 27;
-    iPose.theta = 0;
     
-    wayPoint.x = 36;
-    wayPoint.y = 12;
-    wayPoint.theta = 270;
+    const MaCI::Position::TPose2D *mypos = new MaCI::Position::TPose2D::TPose2D(3,2.7,0);
+	
+	 iInterface.iPositionOdometry->SetPosition(*mypos);
+	 
+	 EKF = new odoEKF();
+	 EKF->setDt(0.2);
+    
     
     // Start execution of parallel thread(s) (Base class name is not
     // required, it is just added in the demo for clarification
@@ -223,25 +224,26 @@ int CJ2B2Demo::RunInfoDemo(int aIterations)
 
   }
 
+/*
   // This prints Odometry output every 5 seconds.
   if (iInterface.iPositionOdometry) {
     while(iDemoActive && 
           iInfoThreadActive && 
           (aIterations == -1 || iterations < aIterations)) {
       CPositionData pd;
-      //if (iInterface.iPositionOdometry->GetPositionEvent(pd,
-                                                     //&posSeq,
-                                                     //1000)) {
-        //const TPose2D *pose = pd.GetPose2D();
-        //if (pose && ownTime_get_ms_since(tbegin) > 5000) {
-          //dPrint(1,"Odometry position now at: x:%f, y:%f, a: %frad",
-                 //pose->x, pose->y, pose->a);
-          //tbegin = ownTime_get_ms();
-        //}
-      //} else {
-        //dPrint(1,"No event available!");
+      if (iInterface.iPositionOdometry->GetPositionEvent(pd,
+                                                     &posSeq,
+                                                     1000)) {
+        const TPose2D *pose = pd.GetPose2D();
+        if (pose && ownTime_get_ms_since(tbegin) > 1000) {
+          dPrint(1,"Odometry position now at: x:%f, y:%f, a: %frad",
+                 pose->x, pose->y, pose->a);
+          tbegin = ownTime_get_ms();
+        }
+      } else {
+        dPrint(1,"No event available!");
         
-      //}
+      }
       
       ++iterations;
     }
@@ -249,7 +251,7 @@ int CJ2B2Demo::RunInfoDemo(int aIterations)
     dPrint(1,"No PositionOdometry available. Nothing to do. Abort Infothread.");
 
   }
-  
+  //*/
   // Mark thread terminated.
   iInfoThreadActive = false;
 
@@ -884,13 +886,15 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
   float r_wspeed = 0.5;
   int posSeq = -1;
   step = 0;
-  float x_present;
-  float y_present;
-  float a_present, a_present_abs;
+  //float x_present;
+  //float y_present;
+  //float a_present, a_present_abs;
   float a_next, a_present_2pi;
   
-	float x_next[15] = {3.6, 3.6, 3.6, 2.7, 2.7, 2.0, 1.5, 1.5, 1.0, 0.5, 0.9, 1.6, 2.4, 2.4, 3};
-	float y_next[15] = {2.7, 1.5, 0.5, 0.5, 1.4, 1.4, 1.4, 0.65, 0.65, 0.65, 2.4, 2.4, 2.4, 2.7, 2.7};
+	//float x_next[15] = {3.6, 3.6, 3.6, 2.7, 2.7, 2.0, 1.6, 1.5, 1.0, 0.5, 0.9, 1.6, 2.4, 2.4, 3};
+	//float y_next[15] = {2.7, 1.5, 0.5, 0.6, 1.7, 1.7, 1.7, 0.65, 0.65, 0.65, 2.4, 2.4, 2.4, 2.7, 2.7};
+	float x_next[15] = {3.6, 3.6, 3.6, 2.7, 2.7, 2.2, 1.7, 1.0, 0.5, 0.9, 1.6, 2.4, 2.4, 3};
+	float y_next[15] = {2.7, 1.5, 0.5, 0.6, 1.7, 1.7, 0.7, 0.65, 0.65, 2.4, 2.4, 2.4, 2.7, 2.7};
 					    
   int state_r=0; 
   bool check_flag = false, motion_flag = false; // for debugging
@@ -898,7 +902,8 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
   //Control Loop from Lecture Slides
   float rho=1, alpha, beta;
   float dx=0.1, dy=0.1;
-  float K_rho= 0.3, K_alpha=0.7, K_beta=-0.15;
+  float K_rho= 0.15, K_alpha=0.7, K_beta=-0.05;
+  //float K_rho= 0.3, K_alpha=0.7, K_beta=-0.15;
   //float K_rho= 1, K_alpha=2.66, K_beta=(-0.5);
 
   if (iMotionThreadActive) {
@@ -945,18 +950,23 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 					MaCI::Position::CPositionData pd;
 					iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000);
 					const TPose2D *pose = pd.GetPose2D();
-                    // Need EKF
-					//node plan = path.at(step);
-					//node next_stp = path.at(step+1);
-					
+
+                    double v, w, x_present, y_present, a_present;
                     
+					/*
+					//EKF->insertMeasurement(pose->x, pose->y, pose->a);
+                    EKF->readEstimates(&x_present, &y_present, &a_present, &v, &w);
+                    //*/
+                    //*
 					x_present = pose->x;
 					y_present = pose->y;
 					a_present = pose->a;
-					
-					
-					dPrint(1,"\n\n\n\n", motionState);
-					dPrint(1,"State: %d", motionState);
+					//*/
+					//*
+					dPrint(1,"\n\n\n\n");
+					if (motionState == StateIdle) { dPrint(1,"State: Idle");}
+					else if (motionState == StateDriving) { dPrint(1,"State: Driving");}
+					else if (motionState == StateTurning) { dPrint(1,"State: Turning");}
 					dPrint(1,"x: %.2f->%.2f", x_present, x_next[step]);
 					dPrint(1,"y: %.2f->%.2f", y_present, y_next[step]);
 					dPrint(1,"delta: %.2f, %.2f", dx, dy);
@@ -965,41 +975,8 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 					dPrint(1,"a_present is: %f",a_present);
 					dPrint(1,"v: %.2f; w: %.2f; a: %.2f",r_speed, r_wspeed, r_acc);
 					dPrint(1,"Step: %d", step);
-					//dPrint(1,"beta is: %f",beta);
-					//dPrint(1,"a_prsent_2pi %f",a_present_2pi);
-					//dPrint(1,"Check Flag: %d", check_flag);
-					//dPrint(1,"Motion Flag: %d ", motion_flag);
-					//dPrint(1,"Has Plan Flag: %d", has_plan);
-					               
-					
-					//A Star Starts
-					//x_next = next_stp.x;
-					//y_next = next_stp.y;
-                    
-					////Set Up a_next
-					
-					//if( plan.x == next_stp.x  ){
-                    //if((next_stp.y - plan.y) > 0){
-                    //a_next = (M_PI/2);
-                    //} else if((next_stp.y - plan.y) < 0){
-                    //a_next = ((3*M_PI/2));
-                    //}
-					//}
-					
-					//if( plan.y == next_stp.y  ){
-                    //if((next_stp.x - plan.x) > 0){
-                    //a_next = 0;
-                    //} else if((next_stp.x - plan.x) < 0){
-                    //a_next = M_PI;
-                    //}
-					//}
-                    
-					//x_next = (next_stp.x * real_w)/w;
-					//y_next = (next_stp.y * real_h)/h;
-					
-					//A Star Ends
-					
-					
+					//*/            
+										
 					dx = (x_next[step] - x_present);
 					dy = (y_next[step] - y_present);
 					alpha = atan2(dy, dx)-a_present;
@@ -1031,9 +1008,12 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 								r_speed = MAX(MIN(r_speed, MAX_SPEED), -MAX_SPEED);
 								r_wspeed = MAX(MIN(r_wspeed, MAX_WSPEED), -MAX_WSPEED);
 								
+								r_speed *= 2;
+								r_wspeed *= 2;
+								
 								//	r_wspeed = MIN(MAX(r_wspeed, MIN_WSPEED), -MIN_WSPEED);
 								
-			                    		               
+			                    EKF->updateControl(r_speed, r_acc, r_wspeed, 0);		               
 								iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
 								ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
 							
@@ -1060,6 +1040,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 	                            motionState = StateDriving;
 								continue;
 	                        } else {
+			                    EKF->updateControl(r_speed, r_acc, r_wspeed, 0);
 	                            iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
 	                            ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
 	                        }
