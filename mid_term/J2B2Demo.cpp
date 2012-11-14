@@ -1147,7 +1147,9 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
                             a_present_2pi = a_present;
                         }
                         
-                        a_present_2pi = a_present_2pi % (2*M_PI);
+                        if (a_present_2pi >= 2*M_PI) {
+                            a_present_2pi -= 2*M_PI;
+                        }
                         
                         
                         if(a_present_2pi >= a_next-0.1 && a_present_2pi <= a_next+0.1){
