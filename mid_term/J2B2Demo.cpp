@@ -38,9 +38,22 @@
 22,23
 22,27
 30,27---End
-
-
 */
+
+#define DIST_MARGIN		0.05
+#define ANGLE_MARGIN	0.03
+#define MIN_WSPEED		0.05
+#define MAX_WSPEED		0.5
+#define MAX_SPEED		0.3
+#define MAGIC_CNST		2
+
+
+typedef enum {
+	StateIdle = 0,
+	StateDriving,
+	StateTurning
+} MotionState;
+
 struct pose2D {
 	int x;
 	int y;
@@ -49,6 +62,7 @@ struct pose2D {
 
 pose2D iPose;
 pose2D wayPoint;
+MotionState motionState;
 
 int iPreviousDirection = 0;
 
@@ -99,6 +113,17 @@ int iMap[] = {
     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
 
+inline float truncate(float val)
+{
+	if(val > M_PI) {
+		val -= 2*M_PI;
+	}
+	else if(val <= -M_PI) {
+		val += 2*M_PI;
+	}
+	return val;
+}
+	
   
 //*****************************************************************************
 
@@ -859,21 +884,21 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
   float r_wspeed = 0.5;
   int posSeq = -1;
   step = 0;
-  
   float x_present;
   float y_present;
   float a_present, a_present_abs;
   float a_next, a_present_2pi;
   
-  float x_next ;
-  float y_next ;
+	float x_next[15] = {3.6, 3.6, 3.6, 2.7, 2.7, 2.0, 1.5, 1.5, 1.0, 0.5, 0.9, 1.6, 2.4, 2.4, 3};
+	float y_next[15] = {2.7, 1.5, 0.5, 0.5, 1.4, 1.4, 1.4, 0.65, 0.65, 0.65, 2.4, 2.4, 2.4, 2.7, 2.7};
+					    
   int state_r=0; 
-  bool check_flag = false, motion_flag = false; // for debugging 
+  bool check_flag = false, motion_flag = false; // for debugging
   
   //Control Loop from Lecture Slides
   float rho=1, alpha, beta;
-  float delta_x=0.1, delta_y=0.1;
-  float K_rho= 0.3, K_alpha=0.7, K_beta=(-0.15);
+  float dx=0.1, dy=0.1;
+  float K_rho= 0.3, K_alpha=0.7, K_beta=-0.15;
   //float K_rho= 1, K_alpha=2.66, K_beta=(-0.5);
 
   if (iMotionThreadActive) {
@@ -893,365 +918,189 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
     
 		// Got MotionCtrl?
 		if (iInterface.iMotionCtrl) {
-		
-			dPrint(1,"x next is: %f",x_next);
-			dPrint(1,"x present is: %f",x_present);
-			dPrint(1,"y next is: %f",y_next);
-			dPrint(1,"y present is: %f",y_present);
-			dPrint(1,"delta_x is: %f",delta_x);       
-			dPrint(1,"delta_y is: %f",delta_y);
-			dPrint(1,"rho is: %f",rho);
-			dPrint(1,"alpha is: %f",alpha);
-			dPrint(1,"beta is: %f",beta);
-			dPrint(1,"a_present is: %f",a_present);
-			//dPrint(1,"a_prsent_2pi %f",a_present_2pi);
-			dPrint(1,"r_wspeed is: %f",r_wspeed);
-			dPrint(1,"r_speed is: %f",r_speed);
-			dPrint(1,"r_acc is: %f",r_acc);
-			dPrint(1,"a_next is: %f",a_next);
-			dPrint(1,"state_r is: %d",state_r);
-			dPrint(1,"Step: %d", step);
-			//dPrint(1,"Check Flag: %d", check_flag);
-			//dPrint(1,"Motion Flag: %d ", motion_flag);
-			//dPrint(1,"Has Plan Flag: %d", has_plan);
-        
-      
-////////////////IVAN'S MID TERM CODE//////////////////////////////////////////////
-
-		//Run A*
-	
+			
+            
+            
+            ////////////////IVAN'S MID TERM CODE//////////////////////////////////////////////
+            
+            //Run A*
+            
 			//if (!has_plan) {
-				//pathplan2 plan;
-				//path = plan.get_graph(iMap,w,h,iPose.x,iPose.y,wayPoint.x,wayPoint.y);
-				//for(unsigned int i = 0; i < path.size(); i++) {
-					//node aaa = path.at(i);
-					//dPrint(1, "x: %d y: %d F: %f G: %f H: %f parentx: %d parenty: %d", aaa.x, aaa.y,  aaa.F, aaa.G, aaa.H, aaa.px, aaa.py);			
-				//}
-				//has_plan = true;
-				//step =0;
+            //pathplan2 plan;
+            //path = plan.get_graph(iMap,w,h,iPose.x,iPose.y,wayPoint.x,wayPoint.y);
+            //for(unsigned int i = 0; i < path.size(); i++) {
+            //node aaa = path.at(i);
+            //dPrint(1, "x: %d y: %d F: %f G: %f H: %f parentx: %d parenty: %d", aaa.x, aaa.y,  aaa.F, aaa.G, aaa.H, aaa.px, aaa.py);
+            //}
+            //has_plan = true;
+            //step =0;
 			//}
-		
+            
 			
 			if (iInterface.iPositionOdometry) {
-			
-				state_r = 1;
+                
 				//if ( (step) < path.size()) {
-				if ( (step) <= 14) {	
-				//state_r = 7;
+				if (step <= 14) {
+                    //state_r = 7;
 					MaCI::Position::CPositionData pd;
 					iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000);
 					const TPose2D *pose = pd.GetPose2D();
-				// Need EKF
+                    // Need EKF
 					//node plan = path.at(step);
 					//node next_stp = path.at(step+1);
 					
-				
+                    
 					x_present = pose->x;
 					y_present = pose->y;
 					a_present = pose->a;
-					dPrint(1,"Update Pose");
 					
-					if(step == 0){
-						x_next = 3.6;
-						y_next = 2.7;
-						a_next = 3*(M_PI/2);
-					}else if(step == 1){
-						x_next = 3.6;
-						y_next = 1.5;
-						a_next = 3*(M_PI/2);				
-					}else if(step == 2){
-						x_next = 3.6;
-						y_next = 0.5;
-						a_next = (M_PI);				
-					}else if(step == 3){
-						x_next = 2.7;
-						y_next = 0.5;
-						a_next = (M_PI/2);			
-					}else if(step == 4){
-						x_next = 2.7;
-						y_next = 1.4;
-						a_next = (M_PI);				
-					}else if(step == 5){
-						x_next = 2.0;
-						y_next = 1.4;
-						a_next = (M_PI);				
-					}else if(step == 6){
-						x_next = 1.5;
-						y_next = 1.4;
-						a_next = 3*(M_PI/2);				
-					}else if(step == 7){
-						x_next = 1.5;
-						y_next = 0.65;
-						a_next = (M_PI);				
-					}else if(step == 8){
-						x_next = 1.0;
-						y_next = 0.65;
-						a_next = (M_PI);				
-					}else if(step == 9){
-						x_next = 0.5;
-						y_next = 0.65;
-						a_next = (M_PI/2);				
-					}else if(step == 10){
-						x_next = 0.9;
-						y_next = 2.4;
-						a_next = (0);				
-					}else if(step == 11){
-						x_next = 1.6;
-						y_next = 2.4;
-						a_next = (0);				
-					}else if(step == 12){
-						x_next = 2.4;
-						y_next = 2.4;
-						a_next = (M_PI/2);				
-					}else if(step == 13){
-						x_next = 2.4;
-						y_next = 2.7;
-						a_next = (0);				
-					}else if(step == 14){
-						x_next = 3;
-						y_next = 2.7;
-						a_next = (0);				
-					}		
-						
+					
+					dPrint(1,"\n\n\n\n", motionState);
+					dPrint(1,"State: %d", motionState);
+					dPrint(1,"x: %.2f->%.2f", x_present, x_next[step]);
+					dPrint(1,"y: %.2f->%.2f", y_present, y_next[step]);
+					dPrint(1,"delta: %.2f, %.2f", dx, dy);
+					dPrint(1,"rho: %f",rho);
+					dPrint(1,"alpha is: %f",alpha);
+					dPrint(1,"a_present is: %f",a_present);
+					dPrint(1,"v: %.2f; w: %.2f; a: %.2f",r_speed, r_wspeed, r_acc);
+					dPrint(1,"Step: %d", step);
+					//dPrint(1,"beta is: %f",beta);
+					//dPrint(1,"a_prsent_2pi %f",a_present_2pi);
+					//dPrint(1,"Check Flag: %d", check_flag);
+					//dPrint(1,"Motion Flag: %d ", motion_flag);
+					//dPrint(1,"Has Plan Flag: %d", has_plan);
+					               
 					
 					//A Star Starts
 					//x_next = next_stp.x;
 					//y_next = next_stp.y;
-				
+                    
 					////Set Up a_next
 					
 					//if( plan.x == next_stp.x  ){
-						//if((next_stp.y - plan.y) > 0){	
-								//a_next = (M_PI/2);
-						//} else if((next_stp.y - plan.y) < 0){
-								//a_next = ((3*M_PI/2));
-						//}
+                    //if((next_stp.y - plan.y) > 0){
+                    //a_next = (M_PI/2);
+                    //} else if((next_stp.y - plan.y) < 0){
+                    //a_next = ((3*M_PI/2));
+                    //}
 					//}
 					
 					//if( plan.y == next_stp.y  ){
-						//if((next_stp.x - plan.x) > 0){	
-								//a_next = 0;
-						//} else if((next_stp.x - plan.x) < 0){
-								//a_next = M_PI;							
-						//}
+                    //if((next_stp.x - plan.x) > 0){
+                    //a_next = 0;
+                    //} else if((next_stp.x - plan.x) < 0){
+                    //a_next = M_PI;
+                    //}
 					//}
-									
+                    
 					//x_next = (next_stp.x * real_w)/w;
-					//y_next = (next_stp.y * real_h)/h;						
+					//y_next = (next_stp.y * real_h)/h;
 					
 					//A Star Ends
 					
-						
-					delta_x = (x_next - x_present);
-					delta_y = (y_next - y_present);	
 					
-					rho = sqrt(delta_x*delta_x + delta_y*delta_y);
-					alpha = atan2(delta_y, delta_x)-a_present;
-				
-					if(alpha > M_PI){
-						
-						alpha = 2*M_PI - alpha;
-						alpha = -1 * alpha;
-					}
-				
-					if(alpha <= -1 * M_PI){
-					
-						alpha = 2*M_PI + alpha;
-					}
-				
-				
-				
-					beta = -1*(a_present + alpha);
-				
-					if(beta > M_PI){
-					
-						beta = 2*M_PI - beta;
-						beta = -1 * beta;
-					}
-				
-					if(beta < -1 * M_PI){
-						
-						beta = 2*M_PI + beta;
-					}
-				
-					if( (alpha>=(-1*(M_PI/2))) && (alpha<=(M_PI/2)) ){
-					
-						r_speed = K_rho * rho;
-						r_wspeed = K_alpha * alpha + K_beta * beta;	
-					}
-				
-					else if( ( (alpha>(-1*M_PI)) && (alpha<(-1*(M_PI/2))) ) || ( (alpha>(M_PI/2)) && (alpha<=(M_PI)) ) ){
-					
-						r_speed = -1* K_rho * rho;
-						r_wspeed = K_alpha * alpha + K_beta * beta;	
-					}
-					
-				
-				
-					if(r_speed >= 0.2){
-					
-						r_speed = 0.2;
-					
-					}
-				
-					if(r_wspeed >= 0.4){
-					
-						r_wspeed = 0.4;
-					
-					}
-				
-					if(r_wspeed <= -0.4){
-					
-						r_wspeed = -0.4;
-					
-					}
-				
-				
-				
-				//if( (r_wspeed < 0.03) && (r_wspeed >= 0) ) {
-					
-					//r_wspeed = 0.035;
-				//}
-				
-				//if( (r_wspeed > -0.03) && (r_wspeed < 0) ) {
-					
-					//r_wspeed = 0.035;
-				//}
-				
-				
-				
-					if( (rho <= 0.01) ) {	
-						iInterface.iMotionCtrl->SetStop();
-						ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));	
-						state_r = 2;
-						dPrint(1,"state_r is: %d",state_r);
-						r_wspeed = 0.5;
-						r_speed = 0;
-						
-						if(a_present<0){
-								a_present_abs = -1 * a_present;
-						}
-								
-						if((a_present == -0.00 ) || (a_present == 2 * M_PI)){
-								
-								a_present_abs = 0;
-						}
-					    dPrint(1,"a_present Absolute calculated checking, to do a_next");
-					    
-					    
-						if(a_next == (M_PI/2)){
-						
-							if( (a_present_abs >= (M_PI/2)) && (a_present_abs <= M_PI) ){
-					
-								r_wspeed = -1 * r_wspeed;
-								state_r=11;
-							}else{
-								r_wspeed = r_wspeed;
-								state_r=12;
-							}
-						}else if( a_next == (3*(M_PI/2)) ){
-					
-							if( (a_present_abs > (M_PI/2)) && ((a_present_abs) < (M_PI) ) ){
-					
-								r_wspeed = -1 * r_wspeed;
-								
-								state_r=13;
-								
-								}else{
-					
-								r_wspeed = r_wspeed; 
-								state_r=14;
-							}
-						}else if( a_next == M_PI ){
-					
-								if((a_present > 0)) {
-					
-									r_wspeed = r_wspeed;					
-									state_r=15;
-					
-								}else if((a_present < 0)) {
-					
-									r_wspeed = -1 * r_wspeed;
-									state_r=16;
-								}
-						}else if( a_next == 0 ){
-					
-								if((a_present > 0)) {
-					
-								r_wspeed = -1 * r_wspeed;
-								state_r=17;
-								}else if((a_present < 0)) {
-					
-								r_wspeed = r_wspeed;
-								state_r=18;
+					dx = (x_next[step] - x_present);
+					dy = (y_next[step] - y_present);
+					alpha = atan2(dy, dx)-a_present;
+                    alpha = truncate(alpha);
 							
-								}
-						}
-						dPrint(1,"state_r is: %d",state_r);
-					    dPrint(1,"r_wspeed set to: %f",r_wspeed);
-					    
-						if(a_present <= 0.00){
-							a_present_2pi = a_present + (2 * M_PI);
-						}else if(a_present>0.00){
-								a_present_2pi = a_present;
-						}
-		
-						if((a_present == -0.00 ) || (a_present == 2 * M_PI)){
-								a_present_2pi = 0;
-						}
 					
-						if( (a_present_2pi >= (a_next-0.1) ) && (a_present_2pi <= (a_next+0.1)) ){
+					switch (motionState) {
+						case StateDriving:
+						{
+							rho = sqrt(dx*dx + dy*dy);
+							
+							if (rho <= DIST_MARGIN) {
+	                            step++; 
+								motionState = StateTurning;
+								iInterface.iMotionCtrl->SetStop();
+								ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+								continue;
+							} else {
+							
+								beta = -(a_present + alpha);
+								beta = truncate(beta);
+										
+								r_speed = K_rho * rho;
+								r_wspeed = K_alpha * alpha + K_beta * beta;
+								if (fabs(alpha) > M_PI_2) {
+									r_speed *= -1;
+								}
+								
+								r_speed = MAX(MIN(r_speed, MAX_SPEED), -MAX_SPEED);
+								r_wspeed = MAX(MIN(r_wspeed, MAX_WSPEED), -MAX_WSPEED);
+								
+								//	r_wspeed = MIN(MAX(r_wspeed, MIN_WSPEED), -MIN_WSPEED);
+								
+			                    		               
+								iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
+								ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+							
+							}	
+						}
+						break;
 						
+						
+						
+						case StateTurning:
+						{
 							iInterface.iMotionCtrl->SetStop();
 							ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
-							state_r = 19;
-							step++;						
-						
-						}else{
-						
-							iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
-							ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));					
-							state_r = 20;
+								    
+						    r_speed = 0;                    
+							r_wspeed = MAGIC_CNST*alpha;
+							r_wspeed = MAX(MIN(r_wspeed, MAX_WSPEED), -MAX_WSPEED);
+							r_wspeed = MIN(MAX(r_wspeed, MIN_WSPEED), -MIN_WSPEED);
+	                        
+	                        if(fabs(alpha) < ANGLE_MARGIN) {
+	                            iInterface.iMotionCtrl->SetStop();
+	                            ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+	                            state_r = 19;
+	                            motionState = StateDriving;
+								continue;
+	                        } else {
+	                            iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
+	                            ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+	                        }
 						}
-					
-										
-											
-					}else{
-						iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
-						ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));	
-						state_r = 3;					
-					}
+			            break;
+			                
+			                
+			                
+			                
+			                
+		                case StateIdle:
+			                if (step <= 14) {
+								motionState = StateDriving;
+							}
+							//Shout!
+						break;
+						}
 				}else{
 					//has_plan = false;
 					step = 0;
 				}
-						
-			}		
-		   
-		
-				
-		
-	
-  
-		
-			} else {
-				dPrint(1,"No MotionCtrl available - Terminating MotionDemo thread.");
-				break;
+                
 			}
-
-    // 5. Increment iteration counter
-			++iterations;
-
-    // 6. Round complete, we should be near an obstacle now, so enter
-    // random again and Redo!
-			dPrint(1,"Round complete. Robot is stopped. %d iterations executed",
-            iterations);
-		}
-
-
-	dPrint(3,"MotionDemoThread terminated.");
-	return 0;
-	}
+        } else {
+            dPrint(1,"No MotionCtrl available - Terminating MotionDemo thread.");
+            break;
+        }
+        
+        // 5. Increment iteration counter
+        ++iterations;
+        
+        // 6. Round complete, we should be near an obstacle now, so enter
+        // random again and Redo!
+        //dPrint(1,"Round complete. Robot is stopped. %d iterations executed",
+         //      iterations);
+    }
+      
+      
+      dPrint(3,"MotionDemoThread terminated.");
+      return 0;
+  }
 }
 
 //*****************************************************************************
