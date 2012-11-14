@@ -8,7 +8,7 @@
 #include <math.h>
 #include <signal.h>
 #include "gimi.h"
-#include "astar/pathplan2.h"
+//#include "astar/pathplan2.h"
 
 #ifdef ENABLE_SERIALLINK
 # include "SerialLink_Client.hpp"
@@ -58,7 +58,7 @@ float real_w = 4.5;
 float real_h = 3.7;
 bool has_plan = false;
 unsigned int step = 0;
-vector<node> path;
+//vector<node> path;
 int iMap[] = {	  
     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
     0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
@@ -858,6 +858,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
   float r_speed = 0.0;
   float r_wspeed = 0.5;
   int posSeq = -1;
+  step = 0;
   
   float x_present;
   float y_present;
@@ -919,30 +920,30 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 
 		//Run A*
 	
-			if (!has_plan) {
-				pathplan2 plan;
-				path = plan.get_graph(iMap,w,h,iPose.x,iPose.y,wayPoint.x,wayPoint.y);
-				for(unsigned int i = 0; i < path.size(); i++) {
-					node aaa = path.at(i);
-					dPrint(1, "x: %d y: %d F: %f G: %f H: %f parentx: %d parenty: %d", aaa.x, aaa.y,  aaa.F, aaa.G, aaa.H, aaa.px, aaa.py);			
-				}
-				has_plan = true;
-				step =0;
-			}
+			//if (!has_plan) {
+				//pathplan2 plan;
+				//path = plan.get_graph(iMap,w,h,iPose.x,iPose.y,wayPoint.x,wayPoint.y);
+				//for(unsigned int i = 0; i < path.size(); i++) {
+					//node aaa = path.at(i);
+					//dPrint(1, "x: %d y: %d F: %f G: %f H: %f parentx: %d parenty: %d", aaa.x, aaa.y,  aaa.F, aaa.G, aaa.H, aaa.px, aaa.py);			
+				//}
+				//has_plan = true;
+				//step =0;
+			//}
 		
-		
+			
 			if (iInterface.iPositionOdometry) {
 			
 				state_r = 1;
-				if ( (step) < path.size()) {
-					
+				//if ( (step) < path.size()) {
+				if ( (step) <= 14) {	
 				//state_r = 7;
 					MaCI::Position::CPositionData pd;
 					iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000);
 					const TPose2D *pose = pd.GetPose2D();
 				// Need EKF
-					node plan = path.at(step);
-					node next_stp = path.at(step+1);
+					//node plan = path.at(step);
+					//node next_stp = path.at(step+1);
 					
 				
 					x_present = pose->x;
@@ -952,21 +953,66 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 					
 					if(step == 0){
 						x_next = 3.6;
-						y_next = 1.2;
+						y_next = 2.7;
 						a_next = 3*(M_PI/2);
 					}else if(step == 1){
-						x_next = 3;
+						x_next = 3.6;
+						y_next = 1.5;
+						a_next = 3*(M_PI/2);				
+					}else if(step == 2){
+						x_next = 3.6;
 						y_next = 0.5;
 						a_next = (M_PI);				
-					}else if(step == 2){
-						x_next = 2.6;
-						y_next = 1;
-						a_next = (M_PI/2);				
 					}else if(step == 3){
-						x_next = 2.1;
+						x_next = 2.7;
+						y_next = 0.5;
+						a_next = (M_PI/2);			
+					}else if(step == 4){
+						x_next = 2.7;
 						y_next = 1.4;
 						a_next = (M_PI);				
-					}	
+					}else if(step == 5){
+						x_next = 2.0;
+						y_next = 1.4;
+						a_next = (M_PI);				
+					}else if(step == 6){
+						x_next = 1.5;
+						y_next = 1.4;
+						a_next = 3*(M_PI/2);				
+					}else if(step == 7){
+						x_next = 1.5;
+						y_next = 0.65;
+						a_next = (M_PI);				
+					}else if(step == 8){
+						x_next = 1.0;
+						y_next = 0.65;
+						a_next = (M_PI);				
+					}else if(step == 9){
+						x_next = 0.5;
+						y_next = 0.65;
+						a_next = (M_PI/2);				
+					}else if(step == 10){
+						x_next = 0.9;
+						y_next = 2.4;
+						a_next = (0);				
+					}else if(step == 11){
+						x_next = 1.6;
+						y_next = 2.4;
+						a_next = (0);				
+					}else if(step == 12){
+						x_next = 2.4;
+						y_next = 2.4;
+						a_next = (M_PI/2);				
+					}else if(step == 13){
+						x_next = 2.4;
+						y_next = 2.7;
+						a_next = (0);				
+					}else if(step == 14){
+						x_next = 3;
+						y_next = 2.7;
+						a_next = (0);				
+					}		
+						
 					
 					//A Star Starts
 					//x_next = next_stp.x;
@@ -1042,9 +1088,9 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 					
 				
 				
-					if(r_speed >= 0.35){
+					if(r_speed >= 0.2){
 					
-						r_speed = 0.35;
+						r_speed = 0.2;
 					
 					}
 				
@@ -1074,16 +1120,28 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 				
 				
 				
-					if( (rho <= 0.02) ) {	
+					if( (rho <= 0.01) ) {	
 						iInterface.iMotionCtrl->SetStop();
 						ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));	
 						state_r = 2;
+						dPrint(1,"state_r is: %d",state_r);
 						r_wspeed = 0.5;
 						r_speed = 0;
-					
+						
+						if(a_present<0){
+								a_present_abs = -1 * a_present;
+						}
+								
+						if((a_present == -0.00 ) || (a_present == 2 * M_PI)){
+								
+								a_present_abs = 0;
+						}
+					    dPrint(1,"a_present Absolute calculated checking, to do a_next");
+					    
+					    
 						if(a_next == (M_PI/2)){
 						
-							if((fabs(a_present) >= (M_PI/2)) && (fabs(a_present) <= M_PI)){
+							if( (a_present_abs >= (M_PI/2)) && (a_present_abs <= M_PI) ){
 					
 								r_wspeed = -1 * r_wspeed;
 								state_r=11;
@@ -1093,13 +1151,15 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 							}
 						}else if( a_next == (3*(M_PI/2)) ){
 					
-							if( (fabs(a_present) > (M_PI/2)) && (fabs(a_present) <= (M_PI)) ){
-					
-								r_wspeed = r_wspeed;
-								state_r=13;
-								}else{
+							if( (a_present_abs > (M_PI/2)) && ((a_present_abs) < (M_PI) ) ){
 					
 								r_wspeed = -1 * r_wspeed;
+								
+								state_r=13;
+								
+								}else{
+					
+								r_wspeed = r_wspeed; 
 								state_r=14;
 							}
 						}else if( a_next == M_PI ){
@@ -1127,7 +1187,9 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 							
 								}
 						}
-					
+						dPrint(1,"state_r is: %d",state_r);
+					    dPrint(1,"r_wspeed set to: %f",r_wspeed);
+					    
 						if(a_present <= 0.00){
 							a_present_2pi = a_present + (2 * M_PI);
 						}else if(a_present>0.00){
@@ -1160,7 +1222,8 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 						state_r = 3;					
 					}
 				}else{
-					has_plan = false;
+					//has_plan = false;
+					step = 0;
 				}
 						
 			}		
