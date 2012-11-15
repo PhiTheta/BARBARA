@@ -15,7 +15,7 @@ CPPFLAGS=-O0 -g3 $(WFLAGSCPP) $(INCLUDES) $(EXTRADEFS) `xml2-config --cflags`
 DCPPFLAGS=-O0 -g3 $(WFLAGSDCPP) $(INCLUDES) $(EXTRADEFS)
 
 LD=g++
-LIBS=-lrt -lpthread -lssl -ljpeg -lpng -lSDL_gfx -lSDL_image \
+LIBS=-lrt -lpthread -lssl -ljpeg -lpng -lSDL_gfx -lSDL_image -larmadillo \
 		 -lSerialLinkClient -lGIMI -lGIMutils -lMaCI -lFSR2011OrderSystem \
 			`xml2-config --libs` `sdl-config  --libs`
 
@@ -38,7 +38,7 @@ all:	$(TARGETS)
 ###############################################
 ###############################################
 # J2B2-UI-example target, and dependencies
-J2B2-UI-EXAMPLE_OBJECTS=J2B2-UI-example.opp J2B2Demo.opp astar/node.opp astar/pathplan2.opp
+J2B2-UI-EXAMPLE_OBJECTS=J2B2-UI-example.opp J2B2Demo.opp astar/node.opp astar/pathplan2.opp odoEKF/odoEKF.opp
 J2B2-UI-example: GIMlibs $(J2B2-UI-EXAMPLE_OBJECTS)
 	@$(LINK) -o $@ $(J2B2-UI-EXAMPLE_OBJECTS) $(LIBS) -lSDL -lSDL_gfx -lSDL_image
 	@echo "      [LD] $@"
@@ -73,7 +73,7 @@ GIMlibs: libGIMI.a libMaCI.a libGIMutils.a libSerialLinkClient.a libFSR2011Order
 ###############################################
 .PHONY: clean
 clean:
-	@rm -f *.o *.opp *.dopp $(TARGETS) astar/*.opp
+	@rm -f *.o *.opp *.dopp $(TARGETS) astar/*.opp odoEKF/*.opp
 	@echo "     [LOCAL-CLEAN]"
 
 ########### Compile rules ####################

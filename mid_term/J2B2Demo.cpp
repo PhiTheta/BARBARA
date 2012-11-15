@@ -40,12 +40,14 @@
 30,27---End
 */
 
-#define DIST_MARGIN		0.02
-#define ANGLE_MARGIN	0.03
+#define DIST_MARGIN		0.04
+#define ANGLE_MARGIN	0.01
 #define MIN_WSPEED		0.5
 #define MAX_WSPEED		0.5
 #define MAX_SPEED		0.4
+#define MIN_SPEED		0.1
 #define MAGIC_CNST		2
+#define NUM_WAYPOINTS	12
 
 
 typedef enum {
@@ -885,6 +887,8 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
   float r_speed = 0.0;
   float r_wspeed = 0.5;
   int posSeq = -1;
+  bool carefully = false;
+  float careful_rho = 0;
   step = 0;
   //float x_present;
   //float y_present;
@@ -893,8 +897,21 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
   
 	//float x_next[15] = {3.6, 3.6, 3.6, 2.7, 2.7, 2.0, 1.6, 1.5, 1.0, 0.5, 0.9, 1.6, 2.4, 2.4, 3};
 	//float y_next[15] = {2.7, 1.5, 0.5, 0.6, 1.7, 1.7, 1.7, 0.65, 0.65, 0.65, 2.4, 2.4, 2.4, 2.7, 2.7};
-	float x_next[15] = {3.6, 3.6, 3.6, 2.7, 2.7, 2.2, 1.7, 1.0, 0.5, 0.9, 1.6, 2.4, 2.4, 3};
-	float y_next[15] = {2.7, 1.5, 0.5, 0.6, 1.7, 1.7, 0.7, 0.65, 0.65, 2.4, 2.4, 2.4, 2.7, 2.7};
+	//float x_next[NUM_WAYPOINTS] = {3.6, 3.6, 3.6, 2.7, 2.7, 2.2, 1.0, 0.5, 0.9, 1.6, 2.4, 2.4, 3};
+	//float y_next[NUM_WAYPOINTS] = {2.7, 1.5, 0.5, 0.6, 1.7, 1.7, 0.65, 0.65, 2.4, 2.4, 2.4, 2.7, 2.7};
+	
+	
+	//WORKING
+	//float x_next[NUM_WAYPOINTS] = {3.6, 3.6, 3.6, 3, 2.5, 1.8, 1.5, 0.5, 0.9, 1.6, 3};
+	//float y_next[NUM_WAYPOINTS] = {2.7, 1.5, 0.5, 0.5, 1.6, 1.6, 0.85, 0.85, 2.4, 2.4, 2.7};
+	
+	//ALMOST
+	//float x_next[NUM_WAYPOINTS] = {3.6, 3.6, 3.6, 2.8, 2.5, 1.8, 1.5, 0.5, 0.5, 2, 2.8};
+	//float y_next[NUM_WAYPOINTS] = {2.7, 1.5, 0.5, 0.5, 1.6, 1.6, 0.95, 0.95, 2.4, 2.4, 2.7};
+		
+	//LAST WORKING VERSION. 4:52 AM
+	float x_next[NUM_WAYPOINTS] = {3.6, 3.6, 3.6, 2.8, 2.5, 1.8, 1.5, 0.5, 0.5, 1.2, 2, 2.8};
+	float y_next[NUM_WAYPOINTS] = {2.7, 1.5, 0.5, 0.5, 1.6, 1.6, 0.85, 0.85, 1.7, 2.6, 2.6, 2.8};
 					    
   int state_r=0; 
   bool check_flag = false, motion_flag = false; // for debugging
@@ -944,17 +961,19 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 			
 			if (iInterface.iPositionOdometry) {
                 
-				//if ( (step) < path.size()) {
-				if (step <= 14) {
-                    //state_r = 7;
+				if (step < NUM_WAYPOINTS) {
+                    
 					MaCI::Position::CPositionData pd;
 					iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000);
 					const TPose2D *pose = pd.GetPose2D();
 
                     double v, w, x_present, y_present, a_present;
                     
+                    //This also records data into the files
+					EKF->insertMeasurement(pose->x, pose->y, pose->a);
+                    
+                    
 					/*
-					//EKF->insertMeasurement(pose->x, pose->y, pose->a);
                     EKF->readEstimates(&x_present, &y_present, &a_present, &v, &w);
                     //*/
                     //*
@@ -995,28 +1014,47 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 								ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
 								continue;
 							} else {
-							
-								beta = -(a_present + alpha);
-								beta = truncate(beta);
-										
-								r_speed = K_rho * rho;
-								r_wspeed = K_alpha * alpha + K_beta * beta;
-								if (fabs(alpha) > M_PI_2) {
-									r_speed *= -1;
+								
+								if (carefully) {
+									//Set it for the first time
+									if (careful_rho == 0) {
+										careful_rho = rho-0.1;
+									}
+									r_wspeed = 0;
+									r_speed = 0.05;
+				                    EKF->updateControl(r_speed, r_acc, r_wspeed, 0);		               
+									iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
+									ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+									
+									//Switch to control algorithm
+									if (rho < careful_rho) {
+										carefully = false;
+									}
 								}
-								
-								r_speed = MAX(MIN(r_speed, MAX_SPEED), -MAX_SPEED);
-								r_wspeed = MAX(MIN(r_wspeed, MAX_WSPEED), -MAX_WSPEED);
-								
-								r_speed *= 2;
-								r_wspeed *= 2;
-								
-								//	r_wspeed = MIN(MAX(r_wspeed, MIN_WSPEED), -MIN_WSPEED);
-								
-			                    EKF->updateControl(r_speed, r_acc, r_wspeed, 0);		               
-								iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
-								ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
-							
+								else {
+									beta = -(a_present + alpha);
+									beta = truncate(beta);
+											
+									r_speed = K_rho * rho;
+									r_wspeed = K_alpha * alpha + K_beta * beta;
+									if (fabs(alpha) > M_PI_2) {
+										r_speed *= -1;
+									}
+									
+									r_speed = MAX(MIN(r_speed, MAX_SPEED), -MAX_SPEED);
+									r_wspeed = MAX(MIN(r_wspeed, MAX_WSPEED), -MAX_WSPEED);
+									
+									r_speed *= 2;
+									r_wspeed *= 2;
+									
+									//if (fabs(r_speed) < MIN_SPEED) {
+										//r_speed = r_speed < 0 ? -MIN_SPEED : MIN_SPEED;
+									//}
+									
+				                    EKF->updateControl(r_speed, r_acc, r_wspeed, 0);		               
+									iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
+									ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+								}
 							}	
 						}
 						break;
@@ -1037,6 +1075,8 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 	                            iInterface.iMotionCtrl->SetStop();
 	                            ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
 	                            state_r = 19;
+	                            carefully = true;
+	                            careful_rho = 0;
 	                            motionState = StateDriving;
 								continue;
 	                        } else {
@@ -1052,7 +1092,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 			                
 			                
 		                case StateIdle:
-			                if (step <= 14) {
+			                if (step < NUM_WAYPOINTS) {
 								motionState = StateDriving;
 							}
 							//Shout!

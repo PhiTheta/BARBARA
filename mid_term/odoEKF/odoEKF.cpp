@@ -1,5 +1,6 @@
 #include <iostream>
 #include <iomanip>
+#include <fstream>
 #include "odoEKF.hpp"
 
 using namespace std;
@@ -13,7 +14,7 @@ odoEKF::odoEKF():_iteration(0), _dt(0.1), _vc(0), _wc(0), _ac(0), _alphac(0), _x
 {
 	_Q = fmat(5,5);
 	_Q.zeros();
-	_Q.diag().fill(0.1);
+	_Q.diag().fill(0.01);
 	_Q(2,2) = _Q(3,3) = 0.01;
 	_Q(0,0) = 1;
 	cout << "Q matrix:" << endl;
@@ -30,6 +31,15 @@ odoEKF::odoEKF():_iteration(0), _dt(0.1), _vc(0), _wc(0), _ac(0), _alphac(0), _x
 	_PPri.diag().fill(0.01);
 	cout << "PPri matrix:" << endl;
 	cout << _PPri << endl;
+	
+	
+	ofstream xmfile;
+	remove ("xm.txt");
+	remove ("ym.txt");
+	remove ("am.txt");
+	remove ("vc.txt");
+	remove ("wc.txt");
+	xmfile.close();
 }
 
 odoEKF::~odoEKF()
@@ -41,10 +51,10 @@ float odoEKF::dt()
 	return _dt;
 }
 
-void odoEKF::setDt(float dt)
+void odoEKF::setDt(float delta)
 {
-	_dt = dt;
-	cout << "dt set to " << setprecision(3) << dt << endl;
+	_dt = delta;
+	cout << "dt set to " << setprecision(3) << delta << endl;
 }
 
 void odoEKF::updateControl(double vc, double ac, double wc, double alphac)
@@ -53,13 +63,39 @@ void odoEKF::updateControl(double vc, double ac, double wc, double alphac)
 	_ac = ac;
 	_wc = wc;
 	_alphac = alphac;
-	//cout << "Updating control:" << endl;
-	//cout << "v: " << setprecision(3) << vc << "; a: " << setprecision(3) << ac;
-	//cout << "; w: " << setprecision(3) << wc << "; alpha: " << setprecision(3) << alphac << endl;
 }
 
 void odoEKF::insertMeasurement(double xm, double ym, double am)
 {
+	//cout << "xm: " << setw(5) << setprecision(3) << xm << "; ym: " << setw(5) << setprecision(3) << "; am: " << setw(5) << setprecision(3) << am
+	//     << "; vc: " << setw(5) << setprecision(3) << _vc << "; wc: " << setw(5) << setprecision(3) << _wc << "; ac: " << setw(5) << setprecision(3) << _ac << endl;
+	
+
+	ofstream xmfile;
+	xmfile.open ("xm.txt", ios::app);
+	xmfile << xm << "\n";
+	xmfile.close();
+	
+	ofstream amfile;
+	amfile.open ("am.txt", ios::app);
+	amfile << am << "\n";
+	amfile.close();
+	
+	ofstream ymfile;
+	ymfile.open ("ym.txt", ios::app);
+	ymfile << ym << "\n";
+	ymfile.close();
+	
+	ofstream vcfile;
+	vcfile.open ("vc.txt", ios::app);
+	vcfile << _vc << "\n";
+	vcfile.close();
+	
+	ofstream wcfile;
+	wcfile.open ("wc.txt", ios::app);
+	wcfile << _wc << "\n";
+	wcfile.close();
+	
 	//Control signals calculation
 	double u1 = sgn(_ve-_vc)*_ac;
 	double u2 = sgn(_we-_wc)*_alphac;
@@ -96,9 +132,9 @@ void odoEKF::insertMeasurement(double xm, double ym, double am)
 	//Measurement covariance
 	fmat R = fmat(3,3);
 	R.zeros();
-	R(0,0) = 0.1*pow(fabs(z(0,0)),2);
-	for (int i = 1; i < 3; i++) {
-		R(i,i) = 1.5*pow(fabs(z(i,0)),2);
+	//R(0,0) = 0.1*pow(fabs(z(0,0)),2);
+	for (int i = 0; i < 3; i++) {
+		R(i,i) = 0.5*pow(fabs(z(i,0)),2);
 	}
 	
 	//Residual covariance

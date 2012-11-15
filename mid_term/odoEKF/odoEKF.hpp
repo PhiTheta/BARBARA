@@ -31,7 +31,7 @@ public:
 	odoEKF();
 	~odoEKF();
 	float dt();
-	void setDt(float dt);
+	void setDt(float delta);
 	void insertMeasurement(double xm, double ym, double am);
 	void updateControl(double vc, double ac, double wc, double alphac);
 	void readEstimates(double *xe, double *ye, double *ae, double *ve, double *we);
