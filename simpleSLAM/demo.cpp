@@ -6,45 +6,45 @@
 
 int main(int argc, char *argv[])
 {
-    TPose2D currentPose;
+    ISPose2D currentPose;
     currentPose.x = 3;
     currentPose.y = 2.7;
     currentPose.angle = 0;
     
     //Test generation of new poses
-    vector<TPose2D> poses = generatePoses(currentPose, 0.5, 4, 8, 0.01, 5);
+    vector<ISPose2D> poses = generatePoses(currentPose, 0.5, 4, 8, 0.01, 5);
     /*
      cout << "Size: " << poses.size() << endl;
      
-     for (vector<TPose2D>::iterator iterator = poses.begin(); iterator < poses.end(); iterator++) {
-     TPose2D pose = *iterator;
+     for (vector<ISPose2D>::iterator iterator = poses.begin(); iterator < poses.end(); iterator++) {
+     ISPose2D pose = *iterator;
      cout << "x: " << pose.x << "; y: " << pose.y << "; angle: " << pose.angle << endl;
      }
      */
     
     
     //Test transformation of points
-    vector<TPoint> points;
+    vector<ISPoint> points;
     for (int i = 0; i < 10; i++) {
-        TPoint point;
+        ISPoint point;
         point.x = i;
         point.y = i;
         points.push_back(point);
     }
     
     
-    TPose2D newPose1;
+    ISPose2D newPose1;
     newPose1.x = 3;
     newPose1.y = 3;
     newPose1.angle = M_PI/6;
     
-    TPose2D newPose2;
+    ISPose2D newPose2;
     newPose2.x = 3;
     newPose2.y = 3;
     newPose2.angle = 0;
     
-    vector<TPoint> newPoints1 = transformPoints(currentPose, newPose1, points);
-    vector<TPoint> newPoints2 = transformPoints(currentPose, newPose2, points);
+    vector<ISPoint> newPoints1 = transformPoints(currentPose, newPose1, points);
+    vector<ISPoint> newPoints2 = transformPoints(currentPose, newPose2, points);
     
     cout << endl;
     cout << "In 2nd column transformed points (270deg rotation, (1m; 0.3m) translation):" << endl;
@@ -55,25 +55,22 @@ int main(int argc, char *argv[])
     cout << "-----------------------------+------------------------------+--------------------------------" << endl;
     
 	for (int i = 0; i < points.size(); i++) {
-        TPoint point = points.at(i);
-        TPoint newPoint1 = newPoints1.at(i);
-        TPoint newPoint2 = newPoints2.at(i);
+        ISPoint point = points.at(i);
+        ISPoint newPoint1 = newPoints1.at(i);
+        ISPoint newPoint2 = newPoints2.at(i);
 		cout << "x: " << setw(10) << setprecision(2) << point.x     << "; y: " << setw(10) << setprecision(2) << point.y     << " | "
         << "x: " << setw(10) << setprecision(2) << newPoint1.x << "; y: " << setw(10) << setprecision(2) << newPoint1.y << " | "
         << "x: " << setw(10) << setprecision(2) << newPoint2.x << "; y: " << setw(10) << setprecision(2) << newPoint2.y << endl;
 	}
     cout << endl;
     
-    float minX1 = minX(points);
-    float minX2 = minX(newPoints1);
-    float minX3 = minX(newPoints2);
-    float minY1 = minY(points);
-    float minY2 = minY(newPoints1);
-    float minY3 = minY(newPoints2);
+    float min1 = minValues(points);
+    float min2 = minValues(newPoints1);
+    float min3 = minValues(newPoints2);
     
-    TPoint offset;
-    offset.x = min(min(minX1, minX2), minX3);
-    offset.y = min(min(minY1, minY2), minY3);
+    ISPoint offset;
+    offset.x = min(min(min1.x, min2.x), min3.x);
+    offset.y = min(min(min1.y, min2.y), min3.y);
     
     
     cout << "Offset: " << offset.x << ", " << offset.y << endl << endl;
