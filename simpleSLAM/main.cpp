@@ -14,7 +14,59 @@ struct TPoint {
     float x, y;
 };
 
-double getCorrelation(vector<TPoint> firstSet, vector<TPoint>secondSet)
+float distanceToPoint(TPoint point)
+{
+    return sqrt(pow(point.x, 2)+pow(point.y, 2));
+}
+
+vector<float> getDistances(vector<TPoint> set)
+{
+    vector<float> res;
+	for (vector<TPoint>::iterator iterator = set.begin(); iterator < set.end(); iterator++) {
+        TPoint point = *iterator;
+        float distance = distanceToPoint(point);
+        res.push_back(distance);
+	}
+    return res;
+}
+
+float minX(vector<TPoint> set) {
+    float res = 0;
+	for (vector<TPoint>::iterator iterator = set.begin(); iterator < set.end(); iterator++) {
+        TPoint point = *iterator;
+        if (point.x < res) {
+            res = point.x;
+        }
+	}
+    return res;
+}
+
+float minY(vector<TPoint> set) {
+    float res = 0;
+	for (vector<TPoint>::iterator iterator = set.begin(); iterator < set.end(); iterator++) {
+        TPoint point = *iterator;
+        if (point.y < res) {
+            res = point.y;
+        }
+	}
+    return res;
+}
+
+vector<TPoint> shiftPoints(vector<TPoint> set, TPoint offset)
+{
+    vector<TPoint> res;
+	for (vector<TPoint>::iterator iterator = set.begin(); iterator < set.end(); iterator++) {
+        TPoint point = *iterator;
+        point.x -= offset.x;
+        point.y -= offset.y;
+        res.push_back(point);
+	}
+    return res;
+}
+
+//Shift is the amount of how much it's needed to shift both sets to make all the values positive
+//It should be calculated from min x and y from considered sets of points 
+double getCorrelation(vector<TPoint> firstSet, vector<TPoint>secondSet, TPoint shift)
 {
     //Refer to http://paulbourke.net/miscellaneous/correlate/ for the explanation (especially what is delay)
     
@@ -25,70 +77,50 @@ double getCorrelation(vector<TPoint> firstSet, vector<TPoint>secondSet)
         return 0;
     }
     
-    int N = firstSet.size();
+    vector<float> X = getDistances(shiftPoints(firstSet, shift));
+    vector<float> Y = getDistances(shiftPoints(secondSet, shift));
     
-    //note that X and Y here correspond to the formula, and is not related to points x and y
-    
-    double r1, r2;
+    int N = X.size();
     
     int maxDelay = N/2;
     
     /* Calculate the means */
-    double mx1 = 0, mx2 = 0, my1 = 0, my2 = 0;
+    double mx = 0, my = 0;
 	for (int i = 0; i < N; i++) {
-        TPoint point1 = firstSet.at(i);
-        TPoint point2 = secondSet.at(i);
-        mx1 += point1.x;
-        my1 += point2.x;
-        mx2 += point1.y;
-        my2 += point2.y;
+        mx += X.at(i);
+        my += Y.at(i);
 	}
-    mx1 /= N;
-    mx2 /= N;
-    my1 /= N;
-    my2 /= N;
+    mx /= N;
+    my /= N;
     
     
     /* Calculate the standart deviations */
-    double sx1 = 0, sx2 = 0, sy1 = 0, sy2 = 0;
+    double sx = 0, sy = 0;
     for (int i = 0; i < N; i++) {
-        TPoint point1 = firstSet.at(i);
-        TPoint point2 = secondSet.at(i);
-        sx1 += pow((point1.x - mx1), 2);
-        sy1 += pow((point2.x - my1), 2);
-        sx2 += pow((point1.y - mx2), 2);
-        sy2 += pow((point2.y - my2), 2);
+        sx += pow((X.at(i) - mx), 2);
+        sy += pow((Y.at(i) - my), 2);
     }
-    sx1 = sqrt(sx1);
-    sx2 = sqrt(sx2);
-    sy1 = sqrt(sy1);
-    sy2 = sqrt(sy2);
+    sx = sqrt(sx);
+    sy = sqrt(sy);
+    
+    double r;
     
     /* Calculate the correlation series */
     for (int delay = -maxDelay; delay < maxDelay; delay++) {
-        double sxy1 = 0, sxy2 = 0;
+        double sxy = 0;
         for (int i = 0; i < N; i++) {
             int j = i + delay;
-            
-            TPoint point1 = firstSet.at(i);
-            
+                        
             if (j < 0 || j >= N) {
                 //Filled with 0 beyound the set boundaries
-                sxy1 += (point1.x - mx1) * -my1;
-                sxy2 += (point1.y - mx2) * -my2;
+                sxy += (X.at(i) - mx) * -my;
             }
             else {
-                TPoint point2 = secondSet.at(j);
-                sxy1 += (point1.x - mx1) * (point2.x - my1);
-                sxy2 += (point1.y - mx2) * (point2.y - my2);
+                sxy += (X.at(i) - mx) * (Y.at(j) - my);
             }
         }
-        r1 = sxy1 / (sx1*sy1);
-        r2 = sxy2 / (sx2*sy2);
+        r = sxy / (sx*sy);
     }
-    
-    //Take the mean of x correlation and y correlation as the final correlation
-    double r = (fabs(r1)+fabs(r2))/2;
     
     return r;
 }
@@ -169,11 +201,11 @@ int main(int argc, char *argv[])
     TPose2D newPose1;
     newPose1.x = 3;
     newPose1.y = 3;
-    newPose1.angle = 3*M_PI_2;
+    newPose1.angle = M_PI/6;
     
     TPose2D newPose2;
     newPose2.x = 3;
-    newPose2.y = 2.7;
+    newPose2.y = 3;
     newPose2.angle = 0;
     
     vector<TPoint> newPoints1 = transformPoints(currentPose, newPose1, points);
@@ -197,9 +229,23 @@ int main(int argc, char *argv[])
 	}
     cout << endl;
     
+    float minX1 = minX(points);
+    float minX2 = minX(newPoints1);
+    float minX3 = minX(newPoints2);
+    float minY1 = minY(points);
+    float minY2 = minY(newPoints1);
+    float minY3 = minY(newPoints2);
+    
+    TPoint offset;
+    offset.x = min(min(minX1, minX2), minX3);
+    offset.y = min(min(minY1, minY2), minY3);
+    
+    
+    cout << "Offset: " << offset.x << ", " << offset.y << endl << endl;
+    
     //Test correlation
-    double correlation1 = getCorrelation(points, newPoints1);
-    double correlation2 = getCorrelation(points, newPoints2);
+    double correlation1 = getCorrelation(points, newPoints1, offset);
+    double correlation2 = getCorrelation(points, newPoints2, offset);
     cout << "Correlation 1: " << correlation1 << endl;
     cout << "Correlation 2: " << correlation2 << endl;
     cout << endl;
