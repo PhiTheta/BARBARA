@@ -144,6 +144,7 @@ void CJ2B2Demo::updateMapForPose(ISPose2D pose)
 	}
 	
 	//Save directly to map
+	robotMap.insert(robotMap.end(), readings.begin(), readings.end());
 }
 
 //*****************************************************************************
@@ -680,6 +681,27 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
                min_x_end,
                min_y_end,
                255, 255, 0, 255);
+      
+    }
+    
+    
+    // Draw the Map
+    if (robotMap.size() > 0) {
+		
+		SDL_Rect rect;
+		rect.x = screen->w- 500;
+		rect.y = 130 ;
+		rect.w = 450 ;  // Set the width of this rectangle area
+		rect.h = 370 ;  // Set the height of this rectangle area
+		
+		SDL_FillRect(screen , &rect , SDL_MapRGB(screen->format , 255 , 255 , 255 ) );
+      
+      
+	     for (vector<ISPoint>::iterator iterator = robotMap.begin(); iterator < robotMap.end(); iterator++) {
+			ISPoint point = *iterator;
+	      filledCircleRGBA(screen, rect.x+point.x, rect.y+point.y,
+                       (int)1, 0, 0, 255, 0);
+	     }
       
     }
     
@@ -1349,3 +1371,29 @@ int CJ2B2Demo::ThreadFunction(const int aThreadNumber)
 //*****************************************************************************
 //*****************************************************************************
 //*****************************************************************************
+
+
+void CJ2B2Demo::drawMap()
+{
+	SDL_Init(SDL_INIT_VIDEO);
+	SDL_Event event;
+	SDL_Surface *screen = SDL_SetVideoMode(640, 480, 16, SDL_SWSURFACE);
+	SDL_WM_SetCaption("BARBARA MAP", "BARBARA MAP");
+	bool done=false;
+	
+	while (!done) { // && iDemoActive && iMotionThreadActive && iSDLThreadActive) {
+		while (SDL_PollEvent(&event)) {
+			if (event.type == SDL_QUIT) {
+				done = true;
+			}
+		}
+	
+		// fill the screen with black color
+		SDL_FillRect(screen, &screen->clip_rect, SDL_MapRGB(screen->format, 0, 0, 0));
+		
+		// update the screen buffer
+		SDL_Flip(screen);
+	}
+	
+	SDL_Quit();
+}

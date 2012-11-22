@@ -69,6 +69,8 @@ private:
   MaCI::Image::CImageContainer iLastCameraImage;
   MaCI::Ranging::TDistanceArray iLastLaserDistanceArray;
   void updateMapForPose(ISPose2D pose);
+  vector<ISPoint> robotMap;
+  void drawMap();
 };
 
 #endif
