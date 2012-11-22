@@ -701,10 +701,21 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
       
 	     for (vector<ISPoint>::iterator iterator = robotMap.begin(); iterator < robotMap.end(); iterator++) {
 			ISPoint point = *iterator;
-			if (point.x >= 0 && point.x <= rect.w && point.y >= 0 && point.y <= rect.h) {
-				filledCircleRGBA(screen, rect.x+point.x*100, rect.y+point.y*100, (int)2, 0, 0, 255, 255);
+			if (point.x >= 0 && point.x <= rect.w && point.y >= -rect.h/2 && point.y <= rect.h/2) {
+				filledCircleRGBA(screen, rect.x+rect.w-point.x*100, rect.y+rect.h+point.y*100, (int)1, 0, 0, 255, 255);
 			}
 	     }
+	     
+	     float robot_x = rect.x+rect.w-robotPose.x*100;
+	     float robot_y = rect.y+rect.h+robotPose.y*100;
+	     
+		filledCircleRGBA(screen, robot_x, robot_y, (int)10, 255, 0, 0, 255);
+		
+		float pointer_end_x = robot_x - 10*cos(robotPose.angle);
+		float pointer_end_y = robot_y + 10*sin(robotPose.angle);
+		
+		lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 0, 0, 0, 255);
+	     
       
     }
     
@@ -961,10 +972,9 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
   bool check_flag = false, motion_flag = false; // for debugging
   
   bool first_reading = true;
-  ISPose2D robotPose;
-  robotPose.x = 0;
-  robotPose.y = 0;
-  robotPose.angle = 0;
+  //robotPose.x = 0;
+  //robotPose.y = 0;
+  //robotPose.angle = 0;
   
   //Control Loop from Lecture Slides
   float rho=1, alpha, beta;
@@ -1012,14 +1022,14 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 			
 			
             
-        if (first_reading) {
-			first_reading = false;
+        //if (first_reading) {
+		//	first_reading = false;
 			
-			updateMapForPose(robotPose);
+		//	updateMapForPose(robotPose);
 			
-			ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
-			continue;
-		}
+		//	ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+		//	continue;
+		//}
             	
 			if (iInterface.iPositionOdometry) {
 				      
@@ -1066,10 +1076,10 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 			     }
 				  
 				  //Correct current pose
-				 ISPose2D correctedPose = predictedPose;
+				 ISPose2D correctedPose = predictedPose; /*
 				 if (index >= 0 && index < (int)generatedPoses.size()) {
 					 correctedPose = generatedPoses.at(index);
-				 }
+				 }*/
 				 robotPose = correctedPose;
 				  
 				 //Updated readings according to the newly update pose
