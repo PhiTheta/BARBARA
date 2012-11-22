@@ -702,17 +702,17 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 	     for (vector<ISPoint>::iterator iterator = robotMap.begin(); iterator < robotMap.end(); iterator++) {
 			ISPoint point = *iterator;
 			if (point.x >= 0 && point.x <= rect.w && point.y >= -rect.h/2 && point.y <= rect.h/2) {
-				filledCircleRGBA(screen, rect.x+rect.w-point.x*100, rect.y+rect.h+point.y*100, (int)1, 0, 0, 255, 255);
+				filledCircleRGBA(screen, rect.x+point.x*100, rect.y+rect.h-point.y*100, (int)1, 0, 0, 255, 255);
 			}
 	     }
 	     
-	     float robot_x = rect.x+rect.w-robotPose.x*100;
-	     float robot_y = rect.y+rect.h+robotPose.y*100;
+	     float robot_x = rect.x+robotPose.x*100;
+	     float robot_y = rect.y+rect.h-robotPose.y*100;
 	     
 		filledCircleRGBA(screen, robot_x, robot_y, (int)10, 255, 0, 0, 255);
 		
-		float pointer_end_x = robot_x - 10*cos(robotPose.angle);
-		float pointer_end_y = robot_y + 10*sin(robotPose.angle);
+		float pointer_end_x = robot_x + 10*cos(robotPose.angle);
+		float pointer_end_y = robot_y - 10*sin(robotPose.angle);
 		
 		lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 0, 0, 0, 255);
 	     
