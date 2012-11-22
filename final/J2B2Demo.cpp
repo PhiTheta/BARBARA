@@ -592,14 +592,16 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
     // command was sent more than 200 ms ago (too rapid sending rate
     // will clutter the connection and everything will start to go
     // wrong)
-    if (iMotionThreadActive == false && 
-        ownTime_get_ms_since(speedcommand_last_sent) > 200) {
+    
+
+    //if (iMotionThreadActive == false && 
+      //  ownTime_get_ms_since(speedcommand_last_sent) > 200) {
       // Only send if the motion demo is not active (it is a
       // standalone demo controlling the robot, if it is active,
       // sending commands to robot would only mess up things)
       iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
       speedcommand_last_sent = ownTime_get_ms();
-    }
+   // }
 
 
     // Then, apply the PTU manual control parameters.
@@ -699,8 +701,9 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
       
 	     for (vector<ISPoint>::iterator iterator = robotMap.begin(); iterator < robotMap.end(); iterator++) {
 			ISPoint point = *iterator;
-	      filledCircleRGBA(screen, rect.x+point.x, rect.y+point.y,
-                       (int)1, 0, 0, 255, 0);
+			if (point.x >= 0 && point.x <= rect.w && point.y >= 0 && point.y <= rect.h) {
+				filledCircleRGBA(screen, rect.x+point.x*100, rect.y+point.y*100, (int)2, 0, 0, 255, 255);
+			}
 	     }
       
     }
