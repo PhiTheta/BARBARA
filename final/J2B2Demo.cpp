@@ -143,55 +143,102 @@ void CJ2B2Demo::runSLAM()
 	if (iInterface.iPositionOdometry) {
 		//Get predicted position from odometry
 		MaCI::Position::CPositionData pd;
-		iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000);
-		const TPose2D *pose = pd.GetPose2D();
-		ISPose2D predictedPose = poseFromTPose(pose);
-		
-		//Transform polar laser coordinates to cartesian
-		vector<ISPoint> cartesianReadings;
-		for(EACH_IN_i(iLastLaserDistanceArray)) {
-			cartesianReadings.push_back(laserCartesian(i->distance, i->angle));
-		}
-	
-		//Generate different poses around predicted position
-		vector<ISPose2D> generatedPoses = generatePoses(predictedPose, 0.05, 4, 8, 0.05, 5);
-		  
-		//Calculate transformed laser readings for each of the pose
-		//Also calculate offset, used in correlation method
-		ISPoint offset;
-		offset = minValues(cartesianReadings);
-		
-	     for (vector<ISPose2D>::iterator iterator = generatedPoses.begin(); iterator < generatedPoses.end(); iterator++) {
-			ISPose2D generatedPose = *iterator;
-			vector<ISPoint> transformedPoints = transformPoints(predictedPose, generatedPose, cartesianReadings);
-			ISPoint currentOffset = minValues(transformedPoints);
-			offset.x = min(offset.x, currentOffset.x);
-			offset.y = min(offset.y, currentOffset.y);
-	     }
-	     
-	     //Calculate correlation coefficients and select minimum
-	     float minCorrelation = FLT_MAX;
-	     int index = -1;
-		
-	     for (int i = 0; i < (int)generatedPoses.size(); i++) {
-			ISPose2D generatedPose = generatedPoses.at(i);
-			vector<ISPoint> transformedPoints = transformPoints(predictedPose, generatedPose, cartesianReadings);
-			float correlation = getCorrelation(cartesianReadings, transformedPoints, offset);
-			if (correlation < minCorrelation) {
-				index = i;
-				minCorrelation = correlation;
+	//	if (iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 100)) {
+		//dPrint(1,"Deviceposition %f", iLaserPosition.x);
+		if (iInterface.iPositionOdometry->CPositionClient::GetPositionEvent	(pd,	iLastLaserTimestamp.GetGimTime())
+){
+			const TPose2D *pose = pd.GetPose2D();
+			ISPose2D predictedPose = poseFromTPose(pose);
+			
+			//Transform polar laser coordinates to cartesian
+			vector<ISPoint> cartesianReadings;
+			for(EACH_IN_i(iLastLaserDistanceArray)) {
+				cartesianReadings.push_back(laserCartesian(i->distance, i->angle, iLaserPosition.x));
 			}
-	     }
-		  
-		  //Correct current pose
-		 ISPose2D correctedPose = predictedPose; 
-		 if (index >= 0 && index < (int)generatedPoses.size()) {
-		//	 correctedPose = generatedPoses.at(index);
+		
+			//Generate different poses around predicted position
+			float maxRadius = 0.05;
+			int numCircles = 2;
+			int numPositionsInCircle = 4;
+			float maxAngleDeviation = 0.15;
+			int numAngles = 2;
+			
+			
+			vector<ISPose2D> generatedPoses = generatePoses(predictedPose, 
+															maxRadius, 
+															numCircles,
+															numPositionsInCircle,
+															maxAngleDeviation,
+															numAngles);
+			  
+			//Calculate transformed laser readings for each of the pose
+			//Also calculate offset, used in correlation method
+			
+		    float minDifference = FLT_MAX;
+		    int index = -1;
+			vector<float> scanDistances = getDistances(cartesianReadings);
+			
+			dPrint(1,"Real Position (%f,%f,%f) diff  %f", predictedPose.x, predictedPose.y, predictedPose.angle, fabs(sumDifferences(scanDistances, scanDistances)));
+		    for (int i = 0; i < (int)generatedPoses.size(); i++) {
+				ISPose2D generatedPose = generatedPoses.at(i);
+				vector<ISPoint> transformedPoints = transformPoints(predictedPose, generatedPose, cartesianReadings);
+				float difference = sumDifferences(getDistances(transformedPoints), scanDistances);
+				dPrint(1,"Position (%f,%f,%f), diff  %f",generatedPose.x, generatedPose.y, generatedPose.angle, difference);
+				if (difference < minDifference) {
+					index = i;
+					minDifference = difference;
+				}
+			}
+				
+			/*
+			ISPoint offset;
+			offset = minValues(cartesianReadings);
+			
+		     for (vector<ISPose2D>::iterator iterator = generatedPoses.begin(); iterator < generatedPoses.end(); iterator++) {
+				ISPose2D generatedPose = *iterator;
+				vector<ISPoint> transformedPoints = transformPoints(predictedPose, generatedPose, cartesianReadings);
+				ISPoint currentOffset = minValues(transformedPoints);
+				offset.x = min(offset.x, currentOffset.x);
+				offset.y = min(offset.y, currentOffset.y);
+		     }
+		     
+		     //Calculate correlation coefficients and select minimum
+		     float minCorrelation = FLT_MAX;
+		     int index = -1;
+			
+			ISPoint off;
+			off.x=off.y=0;
+			dPrint(1,"Real Position (%f,%f,%f) correlation  %f",predictedPose.x, predictedPose.y, predictedPose.angle, fabs(getCorrelation(cartesianReadings, cartesianReadings, off )));
+		     for (int i = 0; i < (int)generatedPoses.size(); i++) {
+				ISPose2D generatedPose = generatedPoses.at(i);
+				vector<ISPoint> transformedPoints = transformPoints(predictedPose, generatedPose, cartesianReadings);
+				float correlation = fabs(getCorrelation(cartesianReadings, transformedPoints, offset));
+				dPrint(1,"Position (%f,%f,%f), correlation  %f",generatedPose.x, generatedPose.y, generatedPose.angle, correlation);
+				if (correlation < minCorrelation) {
+					index = i;
+					minCorrelation = correlation;
+				}
+		     }
+			  
+			  */
+			  
+			  //Correct current pose
+			 ISPose2D correctedPose = predictedPose; 
+			 if (index >= 0 && index < (int)generatedPoses.size()) {
+				 correctedPose = generatedPoses.at(index);
+			 }
+			 robotPose = correctedPose;
+			 odoPose = predictedPose;
+			 
+			 
+			const MaCI::Position::TPose2D *mypos = new MaCI::Position::TPose2D::TPose2D(correctedPose.x,correctedPose.y,correctedPose.angle);
+			iInterface.iPositionOdometry->SetPosition(*mypos);
+			 
+			 dPrint(1, "dx: %f; dy: %f; da: %f", robotPose.x-odoPose.x, robotPose.y-odoPose.y, robotPose.angle-odoPose.angle);
+			  
+			 //Updated readings according to the newly update pose
+			 updateMapForPose(correctedPose);
 		 }
-		 robotPose = correctedPose;
-		  
-		 //Updated readings according to the newly update pose
-		 updateMapForPose(correctedPose);
 	}
 }
 
@@ -199,8 +246,9 @@ void CJ2B2Demo::updateMapForPose(ISPose2D pose)
 {
 	//Read laser data
 	vector<ISPoint> readings;
+	
 	for(EACH_IN_i(iLastLaserDistanceArray)) {
-		readings.push_back(laserToWorld(i->distance, i->angle, pose));
+		readings.push_back(laserToWorld(i->distance, i->angle, pose, iLaserPosition.x));
 	}
 	
 	//Save directly to map
@@ -223,7 +271,8 @@ CJ2B2Demo::CJ2B2Demo(CJ2B2Client &aInterface)
     iCurrentSensorEvent(KSensorEventAllClear), // Sensors seem clear at begin.
     iSmallestDistanceToObject(),
     iLastCameraImage(),
-    iLastLaserDistanceArray()
+    iLastLaserDistanceArray(),
+    iLastLaserTimestamp()
 {
 }
 //*****************************************************************************
@@ -764,15 +813,22 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 			filledCircleRGBA(screen, rect.x+rect.w/2+point.x*50, rect.y+rect.h/2+point.y*50, (int)1, 0, 0, 255, 255);
 	     }
 	     
-	     float robot_x = rect.x+rect.w/2+robotPose.x*50;
-	     float robot_y = rect.y+rect.h/2+robotPose.y*50;
-	     
-		filledCircleRGBA(screen, robot_x, robot_y, (int)10, 255, 0, 0, 255);
 		
-		float pointer_end_x = robot_x + 10*cos(robotPose.angle);
-		float pointer_end_y = robot_y - 10*sin(robotPose.angle);
 		
+	    float robot_x = rect.x+rect.w/2+odoPose.x*50;
+	    float robot_y = rect.y+rect.h/2+odoPose.y*50;
+		float pointer_end_x = robot_x + 10*cos(odoPose.angle);
+		float pointer_end_y = robot_y - 10*sin(odoPose.angle);
+		filledCircleRGBA(screen, robot_x, robot_y, (int)10, 0, 255, 0, 255);
 		lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 0, 0, 0, 255);
+	     
+		
+	    robot_x = rect.x+rect.w/2+robotPose.x*50;
+	    robot_y = rect.y+rect.h/2+robotPose.y*50;
+		pointer_end_x = robot_x + 10*cos(robotPose.angle);
+		pointer_end_y = robot_y - 10*sin(robotPose.angle);
+		circleRGBA(screen, robot_x, robot_y, (int)10, 255, 0, 0, 255);
+		lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 255, 0, 0, 255);
 	     
       
     }
@@ -1316,6 +1372,8 @@ int CJ2B2Demo::RunSensorsDemo(int aIterations)
     // too fast polling consumes processing time and gains nothing.
     
     if (iInterface.iRangingLaser) {
+		iInterface.iRangingLaser->GetDevicePosition (iLaserPosition);
+		
       r = iInterface.iRangingLaser->GetDistanceArray(laserDistanceData, 
                                                      &laserHeader, &laserTimestamp, &laserSeq, 
                                                      100);
@@ -1324,6 +1382,7 @@ int CJ2B2Demo::RunSensorsDemo(int aIterations)
         // Copy distances
         Lock();
         iLastLaserDistanceArray = laserDistanceData;
+        iLastLaserTimestamp = laserTimestamp;
         Unlock();
         
         

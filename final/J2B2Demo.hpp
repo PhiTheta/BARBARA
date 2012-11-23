@@ -68,7 +68,10 @@ private:
 
   MaCI::Image::CImageContainer iLastCameraImage;
   MaCI::Ranging::TDistanceArray iLastLaserDistanceArray;
+  MaCI::Common::TTimestamp iLastLaserTimestamp;
+  MaCI::Ranging::TDeviceInformationPosition iLaserPosition;
   ISPose2D robotPose;
+  ISPose2D odoPose;
   void updateMapForPose(ISPose2D pose);
   vector<ISPoint> robotMap;
   void runSLAM();

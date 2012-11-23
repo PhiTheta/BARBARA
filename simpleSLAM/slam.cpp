@@ -5,22 +5,21 @@
 #include "slam.h"
 
 
-ISPoint laserCartesian(double distance, double angle)
+ISPoint laserCartesian(double distance, double angle, float laser_to_robot)
 {
 	ISPoint point;
+	//Laser origin coordinates
 	point.x = distance*cos(angle);
 	point.y = -distance*sin(angle);
+	
+	//Robot origin coordinates
+	point.y += laser_to_robot;
+	
 	return point;
 }
 
-ISPoint laserToWorld(double distance, double angle, ISPose2D currentPose)
+ISPoint laserToWorld(double distance, double angle, ISPose2D currentPose, float laser_to_robot)
 {
-	//Distance from the SICK mirror wheel center from back edge ~9.5cm
-	//Distance from SICK back edge to the robot center ~2.7cm
-	float laser_to_robot = 0.122;
-	
-	
-	
 	ISPoint point;
 	
 	//Laser origin coordinates
@@ -51,6 +50,21 @@ vector<float> getDistances(vector<ISPoint> set)
         res.push_back(distance);
 	}
     return res;
+}
+
+float sumDifferences(vector<float> firstSet, vector<float> secondSet)
+{
+    if (firstSet.size() != secondSet.size()) {
+        cout << "Two sets should have the same size!" << endl;
+        return 0;
+    }
+    
+    float res = 0;
+    
+    for (int i = 0; i < firstSet.size(); i++) {
+		res += fabs(firstSet.at(i) - secondSet.at(i));
+	}
+	return res;
 }
 
 ISPoint minValues(vector<ISPoint> set)
@@ -151,19 +165,29 @@ double getCorrelation(vector<ISPoint> firstSet, vector<ISPoint>secondSet, ISPoin
 vector<ISPose2D> generatePoses(ISPose2D currentPose, float maxRadius, int numRadiuses, int numPositions, float maxAngleDeviation, int numOrientations)
 {
     vector<ISPose2D> poses;
-    for (int i = 1; i <= numRadiuses; i++) {
-        float r = maxRadius/i;
-        for (int j = 1; j <= numPositions; j++) {
-            float theta = 2*M_PI/j;
+    for (int i = 0; i < numRadiuses; i++) {
+        if (i == 0) {
             for (int k = -(numOrientations-1)/2; k <= (numOrientations-1)/2; k++) {
                 float angle = k == 0 ? 0 : maxAngleDeviation/k;
-                ISPose2D pose;
-                pose.x = currentPose.x + r*cos(theta);
-                pose.y = currentPose.y -r*sin(theta);
-                pose.angle = currentPose.angle+angle;
+                ISPose2D pose = currentPose;
+                pose.angle += angle;
                 poses.push_back(pose);
             }
-        }
+		}
+		else {		
+			float r = maxRadius/i;
+	        for (int j = 1; j <= numPositions; j++) {
+	            float theta = 2*M_PI/j;
+	            for (int k = -(numOrientations-1)/2; k <= (numOrientations-1)/2; k++) {
+	                float angle = k == 0 ? 0 : maxAngleDeviation/k;
+	                ISPose2D pose;
+	                pose.x = currentPose.x + r*cos(theta);
+	                pose.y = currentPose.y -r*sin(theta);
+	                pose.angle = currentPose.angle+angle;
+	                poses.push_back(pose);
+	            }
+	        }
+		}
     }
     return poses;
 }
