@@ -15,10 +15,25 @@ ISPoint laserCartesian(double distance, double angle)
 
 ISPoint laserToWorld(double distance, double angle, ISPose2D currentPose)
 {
-	//LACKS TRANSFORMATION BEtWEEN LASER FRAME AND ROBOT CENTERED FRAME
+	//Distance from the SICK mirror wheel center from back edge ~9.5cm
+	//Distance from SICK back edge to the robot center ~2.7cm
+	float laser_to_robot = 0.122;
+	
+	
+	
 	ISPoint point;
-	point.x = distance*cos(angle+currentPose.angle)+currentPose.x;
-	point.y = -distance*sin(angle+currentPose.angle)+currentPose.y;
+	
+	//Laser origin coordinates
+	point.x = distance*cos(angle+currentPose.angle);	
+	point.y = -distance*sin(angle+currentPose.angle);
+	
+	//Robot origin coordinates
+	point.x += laser_to_robot*cos(currentPose.angle);
+	point.y += -laser_to_robot*sin(currentPose.angle);
+	
+	//World coordinates
+	point.x += currentPose.x;
+	point.y += currentPose.y;
 	return point;
 }	
 

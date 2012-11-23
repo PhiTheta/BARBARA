@@ -71,7 +71,7 @@ private:
   ISPose2D robotPose;
   void updateMapForPose(ISPose2D pose);
   vector<ISPoint> robotMap;
-  void drawMap();
+  void runSLAM();
 };
 
 #endif
