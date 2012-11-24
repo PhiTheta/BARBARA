@@ -273,11 +273,11 @@ void CJ2B2Demo::runSLAM()
 				 
 				 iRobotPose = correctedPose;
 				
-				iRobotPose = predictedPose;
+				//iRobotPose = predictedPose;
 				//iRobotPose = iOdometryPose;
 				
 				 
-				 dPrint(1, "dx: %f; dy: %f; da: %f", iRobotPose.x-iOdometryPose.x, iRobotPose.y-iOdometryPose.y, iRobotPose.angle-iOdometryPose.angle);
+				 //dPrint(1, "dx: %f; dy: %f; da: %f", iRobotPose.x-iOdometryPose.x, iRobotPose.y-iOdometryPose.y, iRobotPose.angle-iOdometryPose.angle);
 				  
 				  
 				  if (fabs(poseDifference.angle) < 0.01) {
