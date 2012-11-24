@@ -73,6 +73,7 @@ private:
   MaCI::Ranging::TDeviceInformationPosition iLaserPosition;
   bool iFirstSLAMAttempt;
   ISPose2D iRobotPose;
+  ISPose2D iPreviousRobotPose;
   ISPose2D iOdometryPose;
   ISPose2D iPreviousOdometryPose;
   vector<ISPoint> iRobotMap;
