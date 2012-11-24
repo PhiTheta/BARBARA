@@ -86,23 +86,23 @@ vector<node> pathplan2::get_graph(int *map, int width, int height, int sx, int s
     bool wayok = false;
     while(!wayok && found)
     {
-        node A;
+        node AA;
         for(ci=pass.begin(); ci!=pass.end(); ci++)
         {
-            A = *ci;
+            AA = *ci;
             //cout << A << sx <<endl;
-            if(A.x==sx && A.y==sy)
+            if(AA.x==sx && AA.y==sy)
             {
-                togo.push_front(A);
-                sx = A.px;
-                sy = A.py;
+                togo.push_front(AA);
+                sx = AA.px;
+                sy = AA.py;
                 break;
             }
 
 
         }
         //Anfang gefunden. Knoten verweist auf sich selbst.
-        if(beginx==A.x && beginy==A.y) { wayok = true;  }
+        if(beginx==AA.x && beginy==AA.y) { wayok = true;  }
     }
 
     if(found)
@@ -198,4 +198,8 @@ node pathplan2::expand(int sx, int sy, int x, int y, double cost)
 
     }
     return B;
+}
+
+pathplan2::pathplan2(): w(), h(), tmap(NULL), targetx(), targety(), counter()
+{
 }

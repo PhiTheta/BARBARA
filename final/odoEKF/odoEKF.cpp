@@ -10,7 +10,9 @@ inline int sgn(double x)
 	return x == 0 ? 0 : x > 0 ? 1 : -1; 
 }
 
-odoEKF::odoEKF():_iteration(0), _dt(0.1), _vc(0), _wc(0), _ac(0), _alphac(0), _xe(0), _ye(0), _ae(0), _ve(0), _we(0)
+odoEKF::odoEKF():_Q(), _H(), _PPri(), _iteration(0), _dt(0.1),
+				 _xe(0), _ye(0), _ae(0), _ve(0), _we(0),
+				 _vc(0), _ac(0), _wc(0), _alphac(0)
 {
 	_Q = fmat(5,5);
 	_Q.zeros();

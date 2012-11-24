@@ -139,105 +139,154 @@ void CJ2B2Demo::runSLAM()
 {
 	using namespace MaCI::Position;
 	using namespace MaCI;
-	int posSeq = -1;
+	
 	if (iInterface.iPositionOdometry) {
+		if (iFirstSLAMAttempt) {
+			//Get the readings and just save them without any SLAM
+			
+			int posSeq = -1;
+			CPositionData pd;
+			if (iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000)) {
+				const TPose2D *pose = pd.GetPose2D();
+				if (pose) {
+					ISPose2D firstPose = poseFromTPose(pose);
+					updateMapForPose(firstPose);
+					iFirstSLAMAttempt = false;
+					dPrint(1, "Getting very first odometry %f,%f,%f", firstPose.x,firstPose.y,firstPose.angle);
+					iRobotPose = firstPose;
+				}
+			}
+			
+			return;
+		}
+		
 		//Get predicted position from odometry
 		MaCI::Position::CPositionData pd;
-	//	if (iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 100)) {
-		//dPrint(1,"Deviceposition %f", iLaserPosition.x);
-		if (iInterface.iPositionOdometry->CPositionClient::GetPositionEvent	(pd,	iLastLaserTimestamp.GetGimTime())
-){
-			const TPose2D *pose = pd.GetPose2D();
-			ISPose2D predictedPose = poseFromTPose(pose);
+		if (iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, iLastOdometryTimestamp.GetGimTime())) {
+			const TPose2D *pose1 = pd.GetPose2D();
+			ISPose2D previousOdometryPose = poseFromTPose(pose1);
+			iPreviousOdometryPose = previousOdometryPose;
+			dPrint(1, "Previous odometry %f,%f,%f", iPreviousOdometryPose.x,iPreviousOdometryPose.y,iPreviousOdometryPose.angle);
 			
-			//Transform polar laser coordinates to cartesian
-			vector<ISPoint> cartesianReadings;
-			for(EACH_IN_i(iLastLaserDistanceArray)) {
-				cartesianReadings.push_back(laserCartesian(i->distance, i->angle, iLaserPosition.x));
-			}
-		
-			//Generate different poses around predicted position
-			float maxRadius = 0.05;
-			int numCircles = 2;
-			int numPositionsInCircle = 4;
-			float maxAngleDeviation = 0.15;
-			int numAngles = 2;
-			
-			
-			vector<ISPose2D> generatedPoses = generatePoses(predictedPose, 
-															maxRadius, 
-															numCircles,
-															numPositionsInCircle,
-															maxAngleDeviation,
-															numAngles);
-			  
-			//Calculate transformed laser readings for each of the pose
-			//Also calculate offset, used in correlation method
-			
-		    float minDifference = FLT_MAX;
-		    int index = -1;
-			vector<float> scanDistances = getDistances(cartesianReadings);
-			
-			dPrint(1,"Real Position (%f,%f,%f) diff  %f", predictedPose.x, predictedPose.y, predictedPose.angle, fabs(sumDifferences(scanDistances, scanDistances)));
-		    for (int i = 0; i < (int)generatedPoses.size(); i++) {
-				ISPose2D generatedPose = generatedPoses.at(i);
-				vector<ISPoint> transformedPoints = transformPoints(predictedPose, generatedPose, cartesianReadings);
-				float difference = sumDifferences(getDistances(transformedPoints), scanDistances);
-				dPrint(1,"Position (%f,%f,%f), diff  %f",generatedPose.x, generatedPose.y, generatedPose.angle, difference);
-				if (difference < minDifference) {
-					index = i;
-					minDifference = difference;
-				}
-			}
+			iLastOdometryTimestamp = MaCI::Common::TTimestamp(iLastLaserTimestamp.GetGimTime());
+			if (iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, iLastOdometryTimestamp.GetGimTime())) {
 				
-			/*
-			ISPoint offset;
-			offset = minValues(cartesianReadings);
+				const TPose2D *pose2 = pd.GetPose2D();
+				iOdometryPose = poseFromTPose(pose2);
+				dPrint(1, "Current odometry %f,%f,%f", iOdometryPose.x,iOdometryPose.y,iOdometryPose.angle);
 			
-		     for (vector<ISPose2D>::iterator iterator = generatedPoses.begin(); iterator < generatedPoses.end(); iterator++) {
-				ISPose2D generatedPose = *iterator;
-				vector<ISPoint> transformedPoints = transformPoints(predictedPose, generatedPose, cartesianReadings);
-				ISPoint currentOffset = minValues(transformedPoints);
-				offset.x = min(offset.x, currentOffset.x);
-				offset.y = min(offset.y, currentOffset.y);
-		     }
-		     
-		     //Calculate correlation coefficients and select minimum
-		     float minCorrelation = FLT_MAX;
-		     int index = -1;
+				ISPose2D poseDifference;
+				poseDifference.x = iOdometryPose.x-previousOdometryPose.x;
+				poseDifference.y = iOdometryPose.y-previousOdometryPose.y;
+				poseDifference.angle = iOdometryPose.angle-previousOdometryPose.angle;
+				
+				dPrint(1, "Difference %f,%f,%f", poseDifference.x,poseDifference.y,poseDifference.angle);
 			
-			ISPoint off;
-			off.x=off.y=0;
-			dPrint(1,"Real Position (%f,%f,%f) correlation  %f",predictedPose.x, predictedPose.y, predictedPose.angle, fabs(getCorrelation(cartesianReadings, cartesianReadings, off )));
-		     for (int i = 0; i < (int)generatedPoses.size(); i++) {
-				ISPose2D generatedPose = generatedPoses.at(i);
-				vector<ISPoint> transformedPoints = transformPoints(predictedPose, generatedPose, cartesianReadings);
-				float correlation = fabs(getCorrelation(cartesianReadings, transformedPoints, offset));
-				dPrint(1,"Position (%f,%f,%f), correlation  %f",generatedPose.x, generatedPose.y, generatedPose.angle, correlation);
-				if (correlation < minCorrelation) {
-					index = i;
-					minCorrelation = correlation;
-				}
-		     }
-			  
-			  */
-			  
-			  //Correct current pose
-			 ISPose2D correctedPose = predictedPose; 
-			 if (index >= 0 && index < (int)generatedPoses.size()) {
-				 correctedPose = generatedPoses.at(index);
+				if (fabs(poseDifference.x) < 0.1 && fabs(poseDifference.y) < 0.1) {
+				
+					ISPose2D predictedPose;
+					predictedPose.x = iRobotPose.x+poseDifference.x;
+					predictedPose.y = iRobotPose.y+poseDifference.y;
+					predictedPose.angle = iRobotPose.angle+poseDifference.angle;
+				
+				//	predictedPose.x = iOdometryPose.x;
+				//	predictedPose.y = iOdometryPose.y;
+				//	predictedPose.angle = iOdometryPose.angle;
+					
+				
+				
+					//Transform polar laser coordinates to cartesian
+					vector<ISPoint> cartesianReadings;
+					for(EACH_IN_i(iLastLaserDistanceArray)) {
+						cartesianReadings.push_back(laserCartesian(i->distance, i->angle, iLaserPosition.x));
+					}
+				
+					//Generate different poses around predicted position
+					float maxRadius = 0.05;
+					int numCircles = 2;
+					int numPositionsInCircle = 4;
+					float maxAngleDeviation = 0.15;
+					int numAngles = 2;
+					
+					
+					vector<ISPose2D> generatedPoses = generatePoses(predictedPose, 
+																	maxRadius, 
+																	numCircles,
+																	numPositionsInCircle,
+																	maxAngleDeviation,
+																	numAngles);
+					  
+					//Calculate transformed laser readings for each of the pose
+					//Also calculate offset, used in correlation method
+					
+				    float minDifference = FLT_MAX;
+				    int index = -1;
+					vector<float> scanDistances = getDistances(cartesianReadings);
+					
+					dPrint(1,"Real Position (%f,%f,%f) diff  %f", predictedPose.x, predictedPose.y, predictedPose.angle, fabs(sumDifferences(scanDistances, scanDistances)));
+				    for (int i = 0; i < (int)generatedPoses.size(); i++) {
+						ISPose2D generatedPose = generatedPoses.at(i);
+						vector<ISPoint> transformedPoints = transformPoints(predictedPose, generatedPose, cartesianReadings);
+						float difference = sumDifferences(getDistances(transformedPoints), scanDistances);
+						dPrint(1,"Position (%f,%f,%f), diff  %f",generatedPose.x, generatedPose.y, generatedPose.angle, difference);
+						if (difference < minDifference) {
+							index = i;
+							minDifference = difference;
+						}
+					}
+						
+					/*
+					ISPoint offset;
+					offset = minValues(cartesianReadings);
+					
+				     for (vector<ISPose2D>::iterator iterator = generatedPoses.begin(); iterator < generatedPoses.end(); iterator++) {
+						ISPose2D generatedPose = *iterator;
+						vector<ISPoint> transformedPoints = transformPoints(predictedPose, generatedPose, cartesianReadings);
+						ISPoint currentOffset = minValues(transformedPoints);
+						offset.x = min(offset.x, currentOffset.x);
+						offset.y = min(offset.y, currentOffset.y);
+				     }
+				     
+				     //Calculate correlation coefficients and select minimum
+				     float minCorrelation = FLT_MAX;
+				     int index = -1;
+					
+					ISPoint off;
+					off.x=off.y=0;
+					dPrint(1,"Real Position (%f,%f,%f) correlation  %f",predictedPose.x, predictedPose.y, predictedPose.angle, fabs(getCorrelation(cartesianReadings, cartesianReadings, off )));
+				     for (int i = 0; i < (int)generatedPoses.size(); i++) {
+						ISPose2D generatedPose = generatedPoses.at(i);
+						vector<ISPoint> transformedPoints = transformPoints(predictedPose, generatedPose, cartesianReadings);
+						float correlation = fabs(getCorrelation(cartesianReadings, transformedPoints, offset));
+						dPrint(1,"Position (%f,%f,%f), correlation  %f",generatedPose.x, generatedPose.y, generatedPose.angle, correlation);
+						if (correlation < minCorrelation) {
+							index = i;
+							minCorrelation = correlation;
+						}
+				     }
+					  
+					  */
+					  
+					  //Correct current pose
+					 ISPose2D correctedPose = predictedPose; 
+					 if (index >= 0 && index < (int)generatedPoses.size()) {
+						 correctedPose = generatedPoses.at(index);
+					 }
+					 iRobotPose = correctedPose;
+					
+					iRobotPose = iOdometryPose;
+					
+					 
+					 dPrint(1, "dx: %f; dy: %f; da: %f", iRobotPose.x-iOdometryPose.x, iRobotPose.y-iOdometryPose.y, iRobotPose.angle-iOdometryPose.angle);
+					  
+					  
+					  if (fabs(poseDifference.angle) < 0.01) {
+						 //Updated readings according to the newly update pose
+						 //Only if not rotating too much
+						 updateMapForPose(correctedPose);
+					}
+				 }
 			 }
-			 robotPose = correctedPose;
-			 odoPose = predictedPose;
-			 
-			 
-			const MaCI::Position::TPose2D *mypos = new MaCI::Position::TPose2D::TPose2D(correctedPose.x,correctedPose.y,correctedPose.angle);
-			iInterface.iPositionOdometry->SetPosition(*mypos);
-			 
-			 dPrint(1, "dx: %f; dy: %f; da: %f", robotPose.x-odoPose.x, robotPose.y-odoPose.y, robotPose.angle-odoPose.angle);
-			  
-			 //Updated readings according to the newly update pose
-			 updateMapForPose(correctedPose);
 		 }
 	}
 }
@@ -252,7 +301,7 @@ void CJ2B2Demo::updateMapForPose(ISPose2D pose)
 	}
 	
 	//Save directly to map
-	robotMap.insert(robotMap.end(), readings.begin(), readings.end());
+	iRobotMap.insert(iRobotMap.end(), readings.begin(), readings.end());
 }
 
 //*****************************************************************************
@@ -272,7 +321,14 @@ CJ2B2Demo::CJ2B2Demo(CJ2B2Client &aInterface)
     iSmallestDistanceToObject(),
     iLastCameraImage(),
     iLastLaserDistanceArray(),
-    iLastLaserTimestamp()
+    iLastLaserTimestamp(),
+    iLastOdometryTimestamp(),
+    iLaserPosition(),
+    iFirstSLAMAttempt(true),
+    iRobotPose(),
+    iOdometryPose(),
+    iPreviousOdometryPose(),
+    iRobotMap()
 {
 }
 //*****************************************************************************
@@ -338,9 +394,9 @@ void CJ2B2Demo::Terminate()
 
 int CJ2B2Demo::RunInfoDemo(int aIterations)
 {
-  int iterations = 0;
-  int posSeq = -1;
-  ownTime_ms_t tbegin = ownTime_get_ms();
+  //int iterations = 0;
+  //int posSeq = -1;
+  //ownTime_ms_t tbegin = ownTime_get_ms();
   using namespace MaCI::Position;
   using namespace MaCI::Map;
   using namespace gimi;
@@ -797,7 +853,7 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
     
     
     // Draw the Map
-    if (robotMap.size() > 0) {
+    if (iRobotMap.size() > 0) {
 		
 		SDL_Rect rect;
 		rect.x = screen->w- 450;
@@ -808,27 +864,35 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 		SDL_FillRect(screen , &rect , SDL_MapRGB(screen->format , 255 , 255 , 255 ) );
       
       
-	     for (vector<ISPoint>::iterator iterator = robotMap.begin(); iterator < robotMap.end(); iterator++) {
+	     for (vector<ISPoint>::iterator iterator = iRobotMap.begin(); iterator < iRobotMap.end(); iterator++) {
 			ISPoint point = *iterator;
 			filledCircleRGBA(screen, rect.x+rect.w/2+point.x*50, rect.y+rect.h/2+point.y*50, (int)1, 0, 0, 255, 255);
 	     }
 	     
 		
 		
-	    float robot_x = rect.x+rect.w/2+odoPose.x*50;
-	    float robot_y = rect.y+rect.h/2+odoPose.y*50;
-		float pointer_end_x = robot_x + 10*cos(odoPose.angle);
-		float pointer_end_y = robot_y - 10*sin(odoPose.angle);
+	    float robot_x = rect.x+rect.w/2+iOdometryPose.x*50;
+	    float robot_y = rect.y+rect.h/2+iOdometryPose.y*50;
+		float pointer_end_x = robot_x + 10*cos(iOdometryPose.angle);
+		float pointer_end_y = robot_y - 10*sin(iOdometryPose.angle);
 		filledCircleRGBA(screen, robot_x, robot_y, (int)10, 0, 255, 0, 255);
 		lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 0, 0, 0, 255);
 	     
+	    robot_x = rect.x+rect.w/2+iPreviousOdometryPose.x*50;
+	    robot_y = rect.y+rect.h/2+iPreviousOdometryPose.y*50;
+		pointer_end_x = robot_x + 10*cos(iPreviousOdometryPose.angle);
+		pointer_end_y = robot_y - 10*sin(iPreviousOdometryPose.angle);
+		circleRGBA(screen, robot_x, robot_y, (int)10, 0, 0, 0, 255);
+		lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 0, 0, 0, 255);
 		
-	    robot_x = rect.x+rect.w/2+robotPose.x*50;
-	    robot_y = rect.y+rect.h/2+robotPose.y*50;
-		pointer_end_x = robot_x + 10*cos(robotPose.angle);
-		pointer_end_y = robot_y - 10*sin(robotPose.angle);
+	    robot_x = rect.x+rect.w/2+iRobotPose.x*50;
+	    robot_y = rect.y+rect.h/2+iRobotPose.y*50;
+		pointer_end_x = robot_x + 10*cos(iRobotPose.angle);
+		pointer_end_y = robot_y - 10*sin(iRobotPose.angle);
 		circleRGBA(screen, robot_x, robot_y, (int)10, 255, 0, 0, 255);
 		lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 255, 0, 0, 255);
+		
+		
 	     
       
     }
@@ -1046,23 +1110,23 @@ int CJ2B2Demo::RunCameraDemo(int aIterations)
 int CJ2B2Demo::RunMotionDemo(int aIterations){
   using namespace MaCI::Position;
   using namespace MaCI;
-  const float angspeed = M_PI / 4.0;
-  const unsigned int turn_duration = 5000;
-  bool dirLeft = true;
-  ownTime_ms_t tbegin;
+  //const float angspeed = M_PI / 4.0;
+  //const unsigned int turn_duration = 5000;
+  //bool dirLeft = true;
+  //ownTime_ms_t tbegin;
   
   //variables midterm
-  float r_acc = 0.2;
-  float r_speed = 0.0;
-  float r_wspeed = 0.5;
-  int posSeq = -1;
-  bool carefully = false;
-  float careful_rho = 0;
+  //float r_acc = 0.2;
+  //float r_speed = 0.0;
+  //float r_wspeed = 0.5;
+  //int posSeq = -1;
+  //bool carefully = false;
+  //float careful_rho = 0;
   step = 0;
   //float x_present;
   //float y_present;
   //float a_present, a_present_abs;
-  float a_next, a_present_2pi;
+  //float a_next, a_present_2pi;
   
 	//float x_next[15] = {3.6, 3.6, 3.6, 2.7, 2.7, 2.0, 1.6, 1.5, 1.0, 0.5, 0.9, 1.6, 2.4, 2.4, 3};
 	//float y_next[15] = {2.7, 1.5, 0.5, 0.6, 1.7, 1.7, 1.7, 0.65, 0.65, 0.65, 2.4, 2.4, 2.4, 2.7, 2.7};
@@ -1079,21 +1143,20 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 	//float y_next[NUM_WAYPOINTS] = {2.7, 1.5, 0.5, 0.5, 1.6, 1.6, 0.95, 0.95, 2.4, 2.4, 2.7};
 		
 	//LAST WORKING VERSION. 4:52 AM
-	float x_next[NUM_WAYPOINTS] = {3.6, 3.6, 3.6, 2.8, 2.5, 1.8, 1.5, 0.5, 0.5, 1.2, 2, 2.8};
-	float y_next[NUM_WAYPOINTS] = {2.7, 1.5, 0.5, 0.5, 1.6, 1.6, 0.85, 0.85, 1.7, 2.6, 2.6, 2.8};
+	//float x_next[NUM_WAYPOINTS] = {3.6, 3.6, 3.6, 2.8, 2.5, 1.8, 1.5, 0.5, 0.5, 1.2, 2, 2.8};
+	//float y_next[NUM_WAYPOINTS] = {2.7, 1.5, 0.5, 0.5, 1.6, 1.6, 0.85, 0.85, 1.7, 2.6, 2.6, 2.8};
 					    
-  int state_r=0; 
-  bool check_flag = false, motion_flag = false; // for debugging
+  //int state_r=0; 
+  //bool check_flag = false, motion_flag = false; // for debugging
   
-  bool first_reading = true;
   //robotPose.x = 0;
   //robotPose.y = 0;
   //robotPose.angle = 0;
   
   //Control Loop from Lecture Slides
-  float rho=1, alpha, beta;
-  float dx=0.1, dy=0.1;
-  float K_rho= 0.15, K_alpha=0.7, K_beta=-0.05;
+  //float rho=1, alpha, beta;
+  //float dx=0.1, dy=0.1;
+  //float K_rho= 0.15, K_alpha=0.7, K_beta=-0.05;
   //float K_rho= 0.3, K_alpha=0.7, K_beta=-0.15;
   //float K_rho= 1, K_alpha=2.66, K_beta=(-0.5);
 
@@ -1136,17 +1199,6 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 			//}
 			
 			
-			
-			
-            
-        //if (first_reading) {
-		//	first_reading = false;
-			
-		//	updateMapForPose(robotPose);
-			
-		//	ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
-		//	continue;
-		//}
             	
 			if (iInterface.iPositionOdometry) {
 				      
@@ -1167,15 +1219,15 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 					//EKF->insertMeasurement(pose->x, pose->y, pose->a);
                     
                     
-					/*
+					/ *
                     EKF->readEstimates(&x_present, &y_present, &a_present, &v, &w);
-                    //*
-                    //*
+                    // * /
+                    // *
 					x_present = pose->x;
 					y_present = pose->y;
 					a_present = pose->a;
-					//*
-					//*
+					// * /
+					// *
 					dPrint(1,"\n\n\n\n");
 					if (motionState == StateIdle) { dPrint(1,"State: Idle");}
 					else if (motionState == StateDriving) { dPrint(1,"State: Driving");}
@@ -1188,7 +1240,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 					dPrint(1,"a_present is: %f",a_present);
 					dPrint(1,"v: %.2f; w: %.2f; a: %.2f",r_speed, r_wspeed, r_acc);
 					dPrint(1,"Step: %d", step);
-					//*           
+					// * /           
 										
 					dx = (x_next[step] - x_present);
 					dy = (y_next[step] - y_present);

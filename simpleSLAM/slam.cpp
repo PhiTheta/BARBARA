@@ -61,7 +61,7 @@ float sumDifferences(vector<float> firstSet, vector<float> secondSet)
     
     float res = 0;
     
-    for (int i = 0; i < firstSet.size(); i++) {
+    for (unsigned int i = 0; i < firstSet.size(); i++) {
 		res += fabs(firstSet.at(i) - secondSet.at(i));
 	}
 	return res;

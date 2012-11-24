@@ -1,27 +1,12 @@
 #include "node.h"
 
-node::node()   // Constructor
+node::node(): x(0), y(0), F(0), G(0), H(0), px(0), py(0), used(false)   // Constructor
 {
-   x = 0;
-   y = 0;
-   F = 0;
-   G = 0;
-   H = 0;
-   px = 0;
-   py = 0;
-   used=false;
 }
 
-node::node(const node &copyin)   // Copy constructor to handle pass by value.
+node::node(const node &copyin): x(copyin.x), y(copyin.y), F(copyin.F), G(copyin.G),
+								H(copyin.H), px(copyin.px), py(copyin.py), used(copyin.used)
 {
-   x = copyin.x;
-   y = copyin.y;
-   F = copyin.F;
-   G = copyin.G;
-   H = copyin.H;
-   px = copyin.px;
-   py = copyin.py;
-   used = copyin.used;
 }
 
 ostream &operator<<(ostream &output, const node &aaa)

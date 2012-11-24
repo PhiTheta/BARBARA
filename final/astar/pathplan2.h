@@ -20,6 +20,7 @@ class pathplan2
       int targety;
 
 	public:
+	  pathplan2();
       vector<node> get_graph(int *map, int w, int h, int sx, int sy, int tx, int ty);
       int counter;
 
