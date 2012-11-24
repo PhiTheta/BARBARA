@@ -57,6 +57,7 @@ bool skip_window=false;
 #define NUM_WAYPOINTS	12
 
 
+
 typedef enum {
 	StateIdle = 0,
 	StateDriving,
@@ -300,9 +301,35 @@ void CJ2B2Demo::updateMapForPose(ISPose2D pose)
 	}
 	readings = filterPoints(readings);
 	
-	//Save directly to map
-	iRobotMap.insert(iRobotMap.end(), readings.begin(), readings.end());
+	for (vector<ISPoint>::iterator iterator = readings.begin(); iterator < readings.end(); iterator++) {
+		ISPoint point = *iterator;
+		int x,y;
+		pointToMap(point, &x, &y);
+		if (x >= 0 && y >= 0) {
+			iRobotMap[y][x]=1;
+		}
+	}
 }
+
+void CJ2B2Demo::pointToMap(ISPoint point, int *x, int *y)
+{
+	float x_res = MAP_WIDTH/MAP_COLS;
+	float y_res = MAP_HEIGHT/MAP_ROWS;
+	int x_index = round(point.x/x_res/2) + MAP_COLS/2;
+	int y_index = round(point.y/y_res/2) + MAP_ROWS/2;
+	
+	//dPrint(1,"%f,%f -> %d,%d", point.x, point.y, x_index, y_index);
+	
+	if (x_index >= 0 && x_index < MAP_COLS && y_index >= 0 && y_index < MAP_ROWS) { 
+		*x = x_index;
+		*y = y_index;
+	}
+	else {
+		*x = -1;
+		*y = -1;
+	}
+}
+	
 
 //*****************************************************************************
 
@@ -349,7 +376,7 @@ void CJ2B2Demo::Execute()
     
     iPreviousDirection = 0;
     
-    const MaCI::Position::TPose2D *mypos = new MaCI::Position::TPose2D::TPose2D(3,2.7,0);
+    const MaCI::Position::TPose2D *mypos = new MaCI::Position::TPose2D::TPose2D(0,0,0);
 	
 	 iInterface.iPositionOdometry->SetPosition(*mypos);
 	 
@@ -854,7 +881,7 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
     
     
     // Draw the Map
-    if (iRobotMap.size() > 0) {
+    //if (iRobotMap.size() > 0) {
 		
 		SDL_Rect rect;
 		rect.x = screen->w- 450;
@@ -864,14 +891,39 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 		
 		SDL_FillRect(screen , &rect , SDL_MapRGB(screen->format , 255 , 255 , 255 ) );
       
+		float x_res = MAP_WIDTH/MAP_COLS;
+		float y_res = MAP_HEIGHT/MAP_ROWS;
+		
+		//dPrint(1,"res: %f,%f", x_res, y_res);
+		
+		
+		float x_w = x_res*rect.w/MAP_WIDTH;
+		float y_h = y_res*rect.h/MAP_HEIGHT;
+		
+		//dPrint(1,"wdt,hgt: %f,%f", x_w, y_h);
       
-	     for (vector<ISPoint>::iterator iterator = iRobotMap.begin(); iterator < iRobotMap.end(); iterator++) {
-			ISPoint point = *iterator;
-			filledCircleRGBA(screen, rect.x+rect.w/2+point.x*50, rect.y+rect.h/2+point.y*50, (int)1, 0, 0, 255, 255);
-	     }
+	     for (int i = 0; i < MAP_ROWS; i++) {
+			 for (int j = 0; j < MAP_COLS; j++) {
+				 if (iRobotMap[i][j] == 1) {
+					SDL_Rect pointRect;
+					pointRect.x = rect.x+j*x_w;
+					pointRect.y = rect.y+i*y_h;
+					pointRect.w = x_w;
+					pointRect.h = y_h;
+					// dPrint(1,"%d,%d is obstacle (%d,%d,%d,%d)", i,j,pointRect.x,pointRect.y,pointRect.w,pointRect.h);
+					SDL_FillRect(screen, &pointRect, SDL_MapRGB(screen->format, 0, 0, 255));
+				}
+			}
+		}
+					 
+	     
+	     //vector<ISPoint>::iterator iterator = iRobotMap.begin(); iterator < iRobotMap.end(); iterator++) {
+			//ISPoint point = *iterator;
+			//filledCircleRGBA(screen, rect.x+rect.w/2+point.x*50, rect.y+rect.h/2+point.y*50, (int)1, 0, 0, 255, 255);
+	     //}
 	     
 		
-		
+		/*
 	    float robot_x = rect.x+rect.w/2+iOdometryPose.x*50;
 	    float robot_y = rect.y+rect.h/2+iOdometryPose.y*50;
 		float pointer_end_x = robot_x + 10*cos(iOdometryPose.angle);
@@ -899,11 +951,34 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 		pointer_end_y = robot_y - 10*sin(iRobotPose.angle);
 		circleRGBA(screen, robot_x, robot_y, (int)10, 255, 0, 0, 255);
 		lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 255, 0, 0, 255);
+		*/
+		
+		ISPoint robotPoint;
+		robotPoint.x = iRobotPose.x;
+		robotPoint.y = iRobotPose.y;
+		int x,y;
+		pointToMap(robotPoint,&x,&y);
+		if (x >= 0 && y >= 0) {
+			SDL_Rect pointRect;
+			pointRect.x = rect.x+(x-0.5)*x_w;
+			pointRect.y = rect.y+(y-0.5)*y_h;
+			pointRect.w = x_w*2;
+			pointRect.h = y_h*2;
+			// dPrint(1,"%d,%d is obstacle (%d,%d,%d,%d)", i,j,pointRect.x,pointRect.y,pointRect.w,pointRect.h);
+			SDL_FillRect(screen, &pointRect, SDL_MapRGB(screen->format, 0, 255,0));
+	
+			//Draw pointer
+		    float robot_x = pointRect.x + x_w*0.75;
+		    float robot_y = pointRect.y + y_h*0.75;
+			float pointer_end_x = robot_x + x_w*cos(iOdometryPose.angle);
+			float pointer_end_y = robot_y - y_h*sin(iOdometryPose.angle);
+			lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 255, 0, 0, 255);
+		}
 		
 		
 	     
       
-    }
+    //}
     
     // Print help
 #define HELPSTRCOUNT 7

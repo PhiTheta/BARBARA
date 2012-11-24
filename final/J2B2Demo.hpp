@@ -11,6 +11,11 @@
 #include "J2B2-API.hpp"
 #include "../simpleSLAM/slam.h"
 
+#define MAP_WIDTH		4.5
+#define MAP_HEIGHT		3.7
+#define MAP_ROWS		(37*2)
+#define MAP_COLS		(45*2)
+
 class CJ2B2Demo : private gim::CSync, 
                   private gim::CThread
 {
@@ -76,8 +81,9 @@ private:
   ISPose2D iPreviousRobotPose;
   ISPose2D iOdometryPose;
   ISPose2D iPreviousOdometryPose;
-  vector<ISPoint> iRobotMap;
+  int iRobotMap[MAP_ROWS][MAP_COLS];
   void updateMapForPose(ISPose2D pose);
+  void pointToMap(ISPoint point, int *x, int *y);
   void runSLAM();
 };
 
