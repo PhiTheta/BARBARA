@@ -4,6 +4,29 @@
 #include <iostream>
 #include "slam.h"
 
+vector<ISPoint> filterPoints(vector<ISPoint> points)
+{
+	float FILTER_THRESHOLD = 0.05;
+    vector<ISPoint> res;
+	for (unsigned int i = 1; i < points.size()-1; i++) {
+		ISPoint previousPoint = points.at(i-1);
+		ISPoint nextPoint = points.at(i+1);
+		ISPoint currentPoint = points.at(i);
+		float distance = distanceToPoint(currentPoint);
+        float diff1 = distance-distanceToPoint(previousPoint);
+        float diff2 = distance-distanceToPoint(nextPoint);
+        if ((diff1 > FILTER_THRESHOLD && diff2 > FILTER_THRESHOLD) || (diff1 < -FILTER_THRESHOLD && diff2 < -FILTER_THRESHOLD)) {
+			ISPoint correctedPoint;
+			correctedPoint.x = (nextPoint.x-previousPoint.x)/2;
+			correctedPoint.y = (nextPoint.y-previousPoint.y)/2;
+			res.push_back(correctedPoint);
+	 	}
+	 	else {
+			res.push_back(currentPoint);
+		}
+	}
+    return res;
+}
 
 ISPoint laserCartesian(double distance, double angle, float laser_to_robot)
 {

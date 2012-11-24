@@ -201,8 +201,8 @@ void CJ2B2Demo::runSLAM()
 				float maxRadius = 0.03;
 				int numCircles = 3;
 				int numPositionsInCircle = 8;
-				float maxAngleDeviation = 0.05;
-				int numAngles = 5;
+				float maxAngleDeviation = 0.3;
+				int numAngles = 30;
 				
 				
 				vector<ISPose2D> generatedPoses = generatePoses(predictedPose, 
@@ -280,7 +280,7 @@ void CJ2B2Demo::runSLAM()
 				 //dPrint(1, "dx: %f; dy: %f; da: %f", iRobotPose.x-iOdometryPose.x, iRobotPose.y-iOdometryPose.y, iRobotPose.angle-iOdometryPose.angle);
 				  
 				  
-				  if (fabs(poseDifference.angle) < 0.01) {
+				  if (fabs(poseDifference.angle) < 0.001) {
 					 //Updated readings according to the newly update pose
 					 //Only if not rotating too much
 					 updateMapForPose(correctedPose);
@@ -298,6 +298,7 @@ void CJ2B2Demo::updateMapForPose(ISPose2D pose)
 	for(EACH_IN_i(iLastLaserDistanceArray)) {
 		readings.push_back(laserToWorld(i->distance, i->angle, pose, iLaserPosition.x));
 	}
+	readings = filterPoints(readings);
 	
 	//Save directly to map
 	iRobotMap.insert(iRobotMap.end(), readings.begin(), readings.end());
