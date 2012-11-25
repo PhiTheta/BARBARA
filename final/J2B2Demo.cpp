@@ -167,16 +167,19 @@ void CJ2B2Demo::runSLAM()
 			
 			const TPose2D *pose1 = pd.GetPose2D();	
 			ISPose2D previousPose = poseFromTPose(pose1);
+			iPreviousOdometryPose = previousPose;
 			
 			MaCI::Common::TTimestamp lastOdometry = MaCI::Common::TTimestamp(iLastLaserTimestamp.GetGimTime());
 			
 			if (iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, lastOdometry.GetGimTime())) {
 				const TPose2D *pose2 = pd.GetPose2D();
+				const MaCI::Common::TTimestamp *newTimestamp = pd.GetTimestamp();
 				
 				dPrint(1,"Previous time %f Current time %f", iLastOdometryTimestamp.GetGimTime().getTimeInSeconds(), lastOdometry.GetGimTime().getTimeInSeconds());
 				
-				iLastOdometryTimestamp = lastOdometry;
-				iPreviousOdometryPose = iOdometryPose;//previousPose;
+				//iLastOdometryTimestamp = lastOdometry;
+				iLastOdometryTimestamp.SetTime(newTimestamp->GetGimTime());
+				iPreviousOdometryPose = previousPose;
 				iOdometryPose = poseFromTPose(pose2);
 		
 				dPrint(1, "Previous odometry %f,%f,%f; Current odometry %f,%f,%f", iPreviousOdometryPose.x,iPreviousOdometryPose.y,iPreviousOdometryPose.angle, iOdometryPose.x,iOdometryPose.y,iOdometryPose.angle);
@@ -301,7 +304,7 @@ void CJ2B2Demo::updateMapForPose(ISPose2D pose)
 	for(EACH_IN_i(iLastLaserDistanceArray)) {
 		readings.push_back(laserToWorld(i->distance, i->angle, pose, iLaserPosition.x));
 	}
-	readings = filterPoints(readings);
+	//readings = filterPoints(readings);
 	
 	if (iUsePointMap) {
 		iRobotPointMap.insert(iRobotPointMap.end(), readings.begin(), readings.end());
