@@ -12,9 +12,9 @@ vector<ISPoint> filterPoints(vector<ISPoint> points)
 		ISPoint previousPoint = points.at(i-1);
 		ISPoint nextPoint = points.at(i+1);
 		ISPoint currentPoint = points.at(i);
-		float distance = distanceToPoint(currentPoint);
-        float diff1 = distance-distanceToPoint(previousPoint);
-        float diff2 = distance-distanceToPoint(nextPoint);
+		double distance = distanceToPoint(currentPoint);
+        double diff1 = distance-distanceToPoint(previousPoint);
+        double diff2 = distance-distanceToPoint(nextPoint);
         if ((diff1 > FILTER_THRESHOLD && diff2 > FILTER_THRESHOLD) || (diff1 < -FILTER_THRESHOLD && diff2 < -FILTER_THRESHOLD)) {
 			ISPoint correctedPoint;
 			correctedPoint.x = (nextPoint.x-previousPoint.x)/2;
@@ -59,30 +59,30 @@ ISPoint laserToWorld(double distance, double angle, ISPose2D currentPose, float 
 	return point;
 }	
 
-float distanceToPoint(ISPoint point)
+double distanceToPoint(ISPoint point)
 {
     return sqrt(pow(point.x, 2)+pow(point.y, 2));
 }
 
-vector<float> getDistances(vector<ISPoint> set)
+vector<double> getDistances(vector<ISPoint> set)
 {
-    vector<float> res;
+    vector<double> res;
 	for (vector<ISPoint>::iterator iterator = set.begin(); iterator < set.end(); iterator++) {
         ISPoint point = *iterator;
-        float distance = distanceToPoint(point);
+        double distance = distanceToPoint(point);
         res.push_back(distance);
 	}
     return res;
 }
 
-float sumDifferences(vector<float> firstSet, vector<float> secondSet)
+double sumDifferences(vector<double> firstSet, vector<double> secondSet)
 {
     if (firstSet.size() != secondSet.size()) {
         cout << "Two sets should have the same size!" << endl;
         return 0;
     }
     
-    float res = 0;
+    double res = 0;
     
     for (unsigned int i = 0; i < firstSet.size(); i++) {
 		res += fabs(firstSet.at(i) - secondSet.at(i));
@@ -132,8 +132,8 @@ double getCorrelation(vector<ISPoint> firstSet, vector<ISPoint>secondSet, ISPoin
         return 0;
     }
     
-    vector<float> X = getDistances(shiftPoints(firstSet, shift));
-    vector<float> Y = getDistances(shiftPoints(secondSet, shift));
+    vector<double> X = getDistances(shiftPoints(firstSet, shift));
+    vector<double> Y = getDistances(shiftPoints(secondSet, shift));
     
     int N = X.size();
     

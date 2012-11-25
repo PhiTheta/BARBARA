@@ -11,10 +11,10 @@ struct ISPoint {
 
 ISPoint laserCartesian(double distance, double angle, float laser_to_robot);
 ISPoint laserToWorld(double distance, double angle, ISPose2D currentPose, float laser_to_robot);
-float distanceToPoint(ISPoint point);
+double distanceToPoint(ISPoint point);
 vector<ISPoint> filterPoints(vector<ISPoint> points);
-vector<float> getDistances(vector<ISPoint> set);
-float sumDifferences(vector<float> firstSet, vector<float> secondSet);
+vector<double> getDistances(vector<ISPoint> set);
+double sumDifferences(vector<double> firstSet, vector<double> secondSet);
 ISPoint minValues(vector<ISPoint> set);
 vector<ISPoint> shiftPoints(vector<ISPoint> set, ISPoint offset);
 double getCorrelation(vector<ISPoint> firstSet, vector<ISPoint>secondSet, ISPoint shift);
