@@ -81,7 +81,9 @@ private:
   ISPose2D iPreviousRobotPose;
   ISPose2D iOdometryPose;
   ISPose2D iPreviousOdometryPose;
-  int iRobotMap[MAP_ROWS][MAP_COLS];
+  int iRobotGridMap[MAP_ROWS][MAP_COLS];
+  vector<ISPoint> iRobotPointMap;
+  bool iUsePointMap;
   void updateMapForPose(ISPose2D pose);
   void pointToMap(ISPoint point, int *x, int *y);
   void runSLAM();

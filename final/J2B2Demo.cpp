@@ -299,14 +299,20 @@ void CJ2B2Demo::updateMapForPose(ISPose2D pose)
 	for(EACH_IN_i(iLastLaserDistanceArray)) {
 		readings.push_back(laserToWorld(i->distance, i->angle, pose, iLaserPosition.x));
 	}
-	readings = filterPoints(readings);
+	//readings = filterPoints(readings);
 	
-	for (vector<ISPoint>::iterator iterator = readings.begin(); iterator < readings.end(); iterator++) {
-		ISPoint point = *iterator;
-		int x,y;
-		pointToMap(point, &x, &y);
-		if (x >= 0 && y >= 0) {
-			iRobotMap[y][x]=1;
+	if (iUsePointMap) {
+		iRobotPointMap.insert(iRobotPointMap.end(), readings.begin(), readings.end());
+	}
+	else {
+		
+		for (vector<ISPoint>::iterator iterator = readings.begin(); iterator < readings.end(); iterator++) {
+			ISPoint point = *iterator;
+			int x,y;
+			pointToMap(point, &x, &y);
+			if (x >= 0 && y >= 0) {
+				iRobotGridMap[y][x]=1;
+			}
 		}
 	}
 }
@@ -356,7 +362,9 @@ CJ2B2Demo::CJ2B2Demo(CJ2B2Client &aInterface)
     iPreviousRobotPose(),
     iOdometryPose(),
     iPreviousOdometryPose(),
-    iRobotMap()
+    iRobotGridMap(),
+    iRobotPointMap(),
+    iUsePointMap(false)
 {
 }
 //*****************************************************************************
@@ -891,94 +899,82 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 		
 		SDL_FillRect(screen , &rect , SDL_MapRGB(screen->format , 255 , 255 , 255 ) );
       
-		float x_res = MAP_WIDTH/MAP_COLS;
-		float y_res = MAP_HEIGHT/MAP_ROWS;
-		
-		//dPrint(1,"res: %f,%f", x_res, y_res);
-		
-		
-		float x_w = x_res*rect.w/MAP_WIDTH;
-		float y_h = y_res*rect.h/MAP_HEIGHT;
-		
-		//dPrint(1,"wdt,hgt: %f,%f", x_w, y_h);
-      
-	     for (int i = 0; i < MAP_ROWS; i++) {
-			 for (int j = 0; j < MAP_COLS; j++) {
-				 if (iRobotMap[i][j] == 1) {
-					SDL_Rect pointRect;
-					pointRect.x = rect.x+j*x_w;
-					pointRect.y = rect.y+i*y_h;
-					pointRect.w = x_w;
-					pointRect.h = y_h;
-					// dPrint(1,"%d,%d is obstacle (%d,%d,%d,%d)", i,j,pointRect.x,pointRect.y,pointRect.w,pointRect.h);
-					SDL_FillRect(screen, &pointRect, SDL_MapRGB(screen->format, 0, 0, 255));
-				}
+		if (iUsePointMap) {
+			for (vector<ISPoint>::iterator iterator = iRobotPointMap.begin(); iterator < iRobotPointMap.end(); iterator++) {
+				ISPoint point = *iterator;
+				filledCircleRGBA(screen, rect.x+rect.w/2+point.x*50, rect.y+rect.h/2+point.y*50, (int)1, 0, 0, 255, 255);
 			}
-		}
-					 
-	     
-	     //vector<ISPoint>::iterator iterator = iRobotMap.begin(); iterator < iRobotMap.end(); iterator++) {
-			//ISPoint point = *iterator;
-			//filledCircleRGBA(screen, rect.x+rect.w/2+point.x*50, rect.y+rect.h/2+point.y*50, (int)1, 0, 0, 255, 255);
-	     //}
-	     
-		
-		/*
-	    float robot_x = rect.x+rect.w/2+iOdometryPose.x*50;
-	    float robot_y = rect.y+rect.h/2+iOdometryPose.y*50;
-		float pointer_end_x = robot_x + 10*cos(iOdometryPose.angle);
-		float pointer_end_y = robot_y - 10*sin(iOdometryPose.angle);
-		filledCircleRGBA(screen, robot_x, robot_y, (int)10, 0, 255, 0, 255);
-		lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 0, 0, 0, 255);
-	     
-	    robot_x = rect.x+rect.w/2+iPreviousOdometryPose.x*50;
-	    robot_y = rect.y+rect.h/2+iPreviousOdometryPose.y*50;
-		pointer_end_x = robot_x + 10*cos(iPreviousOdometryPose.angle);
-		pointer_end_y = robot_y - 10*sin(iPreviousOdometryPose.angle);
-		circleRGBA(screen, robot_x, robot_y, (int)10, 0, 0, 0, 255);
-		lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 0, 0, 0, 255);
-		
-	    robot_x = rect.x+rect.w/2+iPreviousRobotPose.x*50;
-	    robot_y = rect.y+rect.h/2+iPreviousRobotPose.y*50;
-		pointer_end_x = robot_x + 10*cos(iPreviousRobotPose.angle);
-		pointer_end_y = robot_y - 10*sin(iPreviousRobotPose.angle);
-		circleRGBA(screen, robot_x, robot_y, (int)10, 255, 0, 255, 255);
-		lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 255, 0, 255, 255);
-		
-	    robot_x = rect.x+rect.w/2+iRobotPose.x*50;
-	    robot_y = rect.y+rect.h/2+iRobotPose.y*50;
-		pointer_end_x = robot_x + 10*cos(iRobotPose.angle);
-		pointer_end_y = robot_y - 10*sin(iRobotPose.angle);
-		circleRGBA(screen, robot_x, robot_y, (int)10, 255, 0, 0, 255);
-		lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 255, 0, 0, 255);
-		*/
-		
-		ISPoint robotPoint;
-		robotPoint.x = iRobotPose.x;
-		robotPoint.y = iRobotPose.y;
-		int x,y;
-		pointToMap(robotPoint,&x,&y);
-		if (x >= 0 && y >= 0) {
-			SDL_Rect pointRect;
-			pointRect.x = rect.x+(x-0.5)*x_w;
-			pointRect.y = rect.y+(y-0.5)*y_h;
-			pointRect.w = x_w*2;
-			pointRect.h = y_h*2;
-			// dPrint(1,"%d,%d is obstacle (%d,%d,%d,%d)", i,j,pointRect.x,pointRect.y,pointRect.w,pointRect.h);
-			SDL_FillRect(screen, &pointRect, SDL_MapRGB(screen->format, 0, 255,0));
-	
-			//Draw pointer
-		    float robot_x = pointRect.x + x_w*0.75;
-		    float robot_y = pointRect.y + y_h*0.75;
-			float pointer_end_x = robot_x + x_w*cos(iOdometryPose.angle);
-			float pointer_end_y = robot_y - y_h*sin(iOdometryPose.angle);
+	    
+		    float robot_x = rect.x+rect.w/2+iOdometryPose.x*50;
+		    float robot_y = rect.y+rect.h/2+iOdometryPose.y*50;
+			float pointer_end_x = robot_x + 10*cos(iOdometryPose.angle);
+			float pointer_end_y = robot_y - 10*sin(iOdometryPose.angle);
+			filledCircleRGBA(screen, robot_x, robot_y, (int)10, 0, 255, 0, 255);
+			lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 0, 0, 0, 255);
+		     
+		    robot_x = rect.x+rect.w/2+iPreviousOdometryPose.x*50;
+		    robot_y = rect.y+rect.h/2+iPreviousOdometryPose.y*50;
+			pointer_end_x = robot_x + 10*cos(iPreviousOdometryPose.angle);
+			pointer_end_y = robot_y - 10*sin(iPreviousOdometryPose.angle);
+			circleRGBA(screen, robot_x, robot_y, (int)10, 0, 0, 0, 255);
+			lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 0, 0, 0, 255);
+			
+		    robot_x = rect.x+rect.w/2+iPreviousRobotPose.x*50;
+		    robot_y = rect.y+rect.h/2+iPreviousRobotPose.y*50;
+			pointer_end_x = robot_x + 10*cos(iPreviousRobotPose.angle);
+			pointer_end_y = robot_y - 10*sin(iPreviousRobotPose.angle);
+			circleRGBA(screen, robot_x, robot_y, (int)10, 255, 0, 255, 255);
+			lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 255, 0, 255, 255);
+			
+		    robot_x = rect.x+rect.w/2+iRobotPose.x*50;
+		    robot_y = rect.y+rect.h/2+iRobotPose.y*50;
+			pointer_end_x = robot_x + 10*cos(iRobotPose.angle);
+			pointer_end_y = robot_y - 10*sin(iRobotPose.angle);
+			circleRGBA(screen, robot_x, robot_y, (int)10, 255, 0, 0, 255);
 			lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 255, 0, 0, 255);
 		}
+		else {
+			float x_res = MAP_WIDTH/MAP_COLS;
+			float y_res = MAP_HEIGHT/MAP_ROWS;
+			
+			float x_w = x_res*rect.w/MAP_WIDTH;
+			float y_h = y_res*rect.h/MAP_HEIGHT;
+	      
+		     for (int i = 0; i < MAP_ROWS; i++) {
+				 for (int j = 0; j < MAP_COLS; j++) {
+					 if (iRobotGridMap[i][j] == 1) {
+						SDL_Rect pointRect;
+						pointRect.x = rect.x+j*x_w;
+						pointRect.y = rect.y+i*y_h;
+						pointRect.w = x_w;
+						pointRect.h = y_h;
+						SDL_FillRect(screen, &pointRect, SDL_MapRGB(screen->format, 0, 0, 255));
+					}
+				}
+			}
+			
+			ISPoint robotPoint;
+			robotPoint.x = iRobotPose.x;
+			robotPoint.y = iRobotPose.y;
+			int x,y;
+			pointToMap(robotPoint,&x,&y);
+			if (x >= 0 && y >= 0) {
+				SDL_Rect pointRect;
+				pointRect.x = rect.x+(x-0.5)*x_w;
+				pointRect.y = rect.y+(y-0.5)*y_h;
+				pointRect.w = x_w*2;
+				pointRect.h = y_h*2;
+				// dPrint(1,"%d,%d is obstacle (%d,%d,%d,%d)", i,j,pointRect.x,pointRect.y,pointRect.w,pointRect.h);
+				SDL_FillRect(screen, &pointRect, SDL_MapRGB(screen->format, 0, 255,0));
 		
-		
-	     
-      
-    //}
+				//Draw pointer
+			    float robot_x = pointRect.x + x_w*0.75;
+			    float robot_y = pointRect.y + y_h*0.75;
+				float pointer_end_x = robot_x + x_w*cos(iOdometryPose.angle);
+				float pointer_end_y = robot_y - y_h*sin(iOdometryPose.angle);
+				lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 255, 0, 0, 255);
+			}
+	    }
     
     // Print help
 #define HELPSTRCOUNT 7
