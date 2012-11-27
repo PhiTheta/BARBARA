@@ -202,8 +202,8 @@ void CJ2B2Demo::runSLAM()
 				float maxRadius = 0.03;
 				int numCircles = 5;
 				int numPositionsInCircle = 8;
-				float maxAngleDeviation = 0.5;
-				int numAngles = 61;
+				float maxAngleDeviation = 0.03;
+				int numAngles = 10;
 				
 				
 				vector<ISPose2D> generatedPoses = generatePoses(predictedPose, 
@@ -225,6 +225,8 @@ void CJ2B2Demo::runSLAM()
 					ISPose2D generatedPose = generatedPoses.at(k);
 					vector<ISPoint> transformedPoints = transformPoints(iOdometryPose, generatedPose, cartesianReadings);
 					double difference = sumDifferences(getDistances(transformedPoints), scanDistances);
+					//double difference = abs(crossCorrelation(getDistances(transformedPoints), scanDistances));
+					//double difference = abs(iterativeCrossCorrelation(getDistances(transformedPoints), scanDistances));
 					if (!iPauseOn) dPrint(1,"%d: Position (%f,%f,%f), diff  %.10f",k , generatedPose.x, generatedPose.y, generatedPose.angle, difference);
 					if (difference < minDifference) {
 						index = k;
