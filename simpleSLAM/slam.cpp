@@ -85,7 +85,7 @@ double sumDifferences(vector<double> firstSet, vector<double> secondSet)
     double res = 0;
     
     for (unsigned int i = 0; i < firstSet.size(); i++) {
-		res += fabs(firstSet.at(i) - secondSet.at(i));
+		res += fabs(pow(firstSet.at(i),2) - pow(secondSet.at(i),2));
 	}
 	return res;
 }

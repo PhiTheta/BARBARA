@@ -84,6 +84,7 @@ private:
   int iRobotGridMap[MAP_ROWS][MAP_COLS];
   vector<ISPoint> iRobotPointMap;
   bool iUsePointMap;
+  volatile bool iPauseOn;
   void updateMapForPose(ISPose2D pose);
   void pointToMap(ISPoint point, int *x, int *y);
   void runSLAM();
