@@ -83,7 +83,9 @@ private:
   ISPose2D iPreviousOdometryPose;
   int iRobotGridMap[MAP_ROWS][MAP_COLS];
   vector<ISPoint> iRobotPointMap;
+  vector<ISPoint> iPreviousLaserReadings;
   bool iUsePointMap;
+  volatile bool iPauseOn;
   void updateMapForPose(ISPose2D pose);
   void pointToMap(ISPoint point, int *x, int *y);
   void runSLAM();

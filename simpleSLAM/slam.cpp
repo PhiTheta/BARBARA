@@ -12,9 +12,9 @@ vector<ISPoint> filterPoints(vector<ISPoint> points)
 		ISPoint previousPoint = points.at(i-1);
 		ISPoint nextPoint = points.at(i+1);
 		ISPoint currentPoint = points.at(i);
-		float distance = distanceToPoint(currentPoint);
-        float diff1 = distance-distanceToPoint(previousPoint);
-        float diff2 = distance-distanceToPoint(nextPoint);
+		double distance = distanceToPoint(currentPoint);
+        double diff1 = distance-distanceToPoint(previousPoint);
+        double diff2 = distance-distanceToPoint(nextPoint);
         if ((diff1 > FILTER_THRESHOLD && diff2 > FILTER_THRESHOLD) || (diff1 < -FILTER_THRESHOLD && diff2 < -FILTER_THRESHOLD)) {
 			ISPoint correctedPoint;
 			correctedPoint.x = (nextPoint.x-previousPoint.x)/2;
@@ -46,7 +46,7 @@ ISPoint laserToWorld(double distance, double angle, ISPose2D currentPose, float 
 	ISPoint point;
 	
 	//Laser origin coordinates
-	point.x = distance*cos(angle+currentPose.angle);	
+	point.x = distance*cos(angle+currentPose.angle);
 	point.y = -distance*sin(angle+currentPose.angle);
 	
 	//Robot origin coordinates
@@ -57,35 +57,36 @@ ISPoint laserToWorld(double distance, double angle, ISPose2D currentPose, float 
 	point.x += currentPose.x;
 	point.y += currentPose.y;
 	return point;
-}	
+}
 
-float distanceToPoint(ISPoint point)
+double distanceToPoint(ISPoint point)
 {
     return sqrt(pow(point.x, 2)+pow(point.y, 2));
 }
 
-vector<float> getDistances(vector<ISPoint> set)
+vector<double> getDistances(vector<ISPoint> set)
 {
-    vector<float> res;
+    vector<double> res;
 	for (vector<ISPoint>::iterator iterator = set.begin(); iterator < set.end(); iterator++) {
         ISPoint point = *iterator;
-        float distance = distanceToPoint(point);
+        double distance = distanceToPoint(point);
         res.push_back(distance);
 	}
     return res;
 }
 
-float sumDifferences(vector<float> firstSet, vector<float> secondSet)
+double sumDifferences(vector<double> firstSet, vector<double> secondSet)
 {
     if (firstSet.size() != secondSet.size()) {
         cout << "Two sets should have the same size!" << endl;
         return 0;
     }
     
-    float res = 0;
+    double res = 0;
     
     for (unsigned int i = 0; i < firstSet.size(); i++) {
-		res += fabs(firstSet.at(i) - secondSet.at(i));
+		res += fabs(pow(firstSet.at(i),2) - pow(secondSet.at(i),2));
+		//res += fabs(firstSet.at(i) - secondSet.at(i));
 	}
 	return res;
 }
@@ -120,20 +121,20 @@ vector<ISPoint> shiftPoints(vector<ISPoint> set, ISPoint offset)
 }
 
 //Shift is the amount of how much it's needed to shift both sets to make all the values positive
-//It should be calculated from min x and y from considered sets of points 
+//It should be calculated from min x and y from considered sets of points
 double getCorrelation(vector<ISPoint> firstSet, vector<ISPoint>secondSet, ISPoint shift)
 {
     //Refer to http://paulbourke.net/miscellaneous/correlate/ for the explanation (especially what is delay)
     
-
+    
     
     if (firstSet.size() != secondSet.size()) {
         cout << "Two sets should have the same size!" << endl;
         return 0;
     }
     
-    vector<float> X = getDistances(shiftPoints(firstSet, shift));
-    vector<float> Y = getDistances(shiftPoints(secondSet, shift));
+    vector<double> X = getDistances(shiftPoints(firstSet, shift));
+    vector<double> Y = getDistances(shiftPoints(secondSet, shift));
     
     int N = X.size();
     
@@ -165,7 +166,7 @@ double getCorrelation(vector<ISPoint> firstSet, vector<ISPoint>secondSet, ISPoin
         double sxy = 0;
         for (int i = 0; i < N; i++) {
             int j = i + delay;
-                        
+            
             if (j < 0 || j >= N) {
                 //Filled with 0 beyound the set boundaries
                 sxy += (X.at(i) - mx) * -my;
@@ -197,7 +198,7 @@ vector<ISPose2D> generatePoses(ISPose2D currentPose, float maxRadius, int numRad
                 poses.push_back(pose);
             }
 		}
-		else {		
+		else {
 			float r = maxRadius/i;
 	        for (int j = 1; j <= numPositions; j++) {
 	            float theta = 2*M_PI/j;
@@ -227,9 +228,67 @@ vector<ISPoint> transformPoints(ISPose2D startPose, ISPose2D endPose, vector<ISP
         float x = point.x;
         float y = point.y;
         ISPoint newPoint;
-        newPoint.x = x*cos(theta)-y*sin(theta)+tx;
-        newPoint.y = x*sin(theta)+y*cos(theta)+ty;
+        newPoint.x = x*cos(theta)+y*sin(theta)+tx;
+        newPoint.y = -x*sin(theta)+y*cos(theta)+ty;
         transformedPoints.push_back(newPoint);
 	}
     return transformedPoints;
 }
+
+
+double avg(vector<double> set)
+{
+	double res = 0.0f;
+	unsigned int n = set.size();
+	for (unsigned int i = 0; i < n; i++) {
+		res += set.at(i);
+	}
+	res /= n;
+	return res;
+}
+
+double crossCorrelation(vector<double> X, vector<double> Y, int timeLag)
+{
+	unsigned int n = X.size();
+	
+	//Mean values
+	double mx = avg(X);
+	double my = avg(Y);
+	
+	//Cross covariance and standart deviations
+	double Cxy = 0.0f;
+	double Sx = 0.0f;
+	double Sy = 0.0f;
+	for (unsigned int i = 0; i < n; i++) {
+		double x = X.at(i); double y = Y.at(i);
+        double xk = ((i-timeLag) >= 0 && (i-timeLag) < n ? X.at(i-timeLag) : 0);
+        double yk = ((i+timeLag) < n && (i+timeLag) >= 0 ? Y.at(i+timeLag) : 0);
+        if (timeLag >= 0) {
+            Cxy += ((x-mx)*(yk-my));
+        }
+        else {
+            Cxy += ((y-my)*(xk-mx));
+        }
+		Sx += pow((x-mx),2);
+		Sy += pow((y-my),2);
+	}
+	Cxy /= n;
+	Sx = sqrt(Sx/n);
+	Sy = sqrt(Sy/n);
+    
+	
+	//Cross correlation
+	double r = Cxy/(Sx*Sy);
+    
+	return r;
+}
+
+double iterativeCrossCorrelation(vector<double> X, vector<double> Y)
+{
+    double res = 0.0f;
+    for (int i = 0; i < (int)X.size()/2; i++) {
+        res += crossCorrelation(X, Y, i);
+    }
+    return res;
+}
+
