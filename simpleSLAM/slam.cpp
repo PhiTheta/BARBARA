@@ -228,8 +228,8 @@ vector<ISPoint> transformPoints(ISPose2D startPose, ISPose2D endPose, vector<ISP
         float x = point.x;
         float y = point.y;
         ISPoint newPoint;
-        newPoint.x = x*cos(theta)-y*sin(theta)+tx;
-        newPoint.y = x*sin(theta)+y*cos(theta)+ty;
+        newPoint.x = x*cos(theta)+y*sin(theta)+tx;
+        newPoint.y = -x*sin(theta)+y*cos(theta)+ty;
         transformedPoints.push_back(newPoint);
 	}
     return transformedPoints;
