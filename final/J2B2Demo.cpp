@@ -155,6 +155,12 @@ void CJ2B2Demo::runSLAM()
 					iFirstSLAMAttempt = false;
 					dPrint(1, "Getting very first odometry %f,%f,%f", firstPose.x,firstPose.y,firstPose.angle);
 					iRobotPose = firstPose;
+					
+					vector<ISPoint> cartesianReadings;
+					for(EACH_IN_i(iLastLaserDistanceArray)) {
+						cartesianReadings.push_back(laserCartesian(i->distance, i->angle, iLaserPosition.x));
+					}
+					iPreviousLaserReadings = cartesianReadings;
 				}
 			}
 			
@@ -167,7 +173,7 @@ void CJ2B2Demo::runSLAM()
 			
 			const TPose2D *pose1 = pd.GetPose2D();	
 			ISPose2D previousPose = poseFromTPose(pose1);
-			iPreviousOdometryPose = previousPose;
+			//iPreviousOdometryPose = previousPose;
 			
 			MaCI::Common::TTimestamp lastOdometry = MaCI::Common::TTimestamp(iLastLaserTimestamp.GetGimTime());
 			
@@ -177,7 +183,6 @@ void CJ2B2Demo::runSLAM()
 				
 				if (!iPauseOn) dPrint(1,"Previous time %f Current time %f", iLastOdometryTimestamp.GetGimTime().getTimeInSeconds(), lastOdometry.GetGimTime().getTimeInSeconds());
 				
-				//iLastOdometryTimestamp = lastOdometry;
 				iLastOdometryTimestamp.SetTime(newTimestamp->GetGimTime());
 				iPreviousOdometryPose = previousPose;
 				iOdometryPose = poseFromTPose(pose2);
@@ -204,10 +209,10 @@ void CJ2B2Demo::runSLAM()
 			
 				//Generate different poses around predicted position
 				float maxRadius = 0.03;
-				int numCircles = 3;
+				int numCircles = 5;
 				int numPositionsInCircle = 8;
-				float maxAngleDeviation = 0.3;
-				int numAngles = 30;
+				float maxAngleDeviation = 0.03;
+				int numAngles = 31;
 				
 				
 				vector<ISPose2D> generatedPoses = generatePoses(predictedPose, 
@@ -227,8 +232,14 @@ void CJ2B2Demo::runSLAM()
 				//if (!iPauseOn) dPrint(1,"Real Position (%f,%f,%f) diff  %f", predictedPose.x, predictedPose.y, predictedPose.angle, fabs(sumDifferences(scanDistances, scanDistances)));
 			    for (unsigned int i = 0; i < generatedPoses.size(); i++) {
 					ISPose2D generatedPose = generatedPoses.at(i);
+					
+					//Estimate how the previous readings would look like in generated position and compare it to current readings
 					vector<ISPoint> transformedPoints = transformPoints(predictedPose, generatedPose, cartesianReadings);
-					double difference = sumDifferences(getDistances(transformedPoints), scanDistances);
+					//vector<ISPoint> transformedPoints = transformPoints(iRobotPose, generatedPose, iPreviousLaserReadings);
+					vector<double> transformedDistances = getDistances(transformedPoints);
+					double difference = sumDifferences(transformedDistances, scanDistances);
+					//double difference = abs(iterativeCrossCorrelation(transformedDistances, scanDistances));
+					//double difference = abs(crossCorrelation(transformedDistances, scanDistances, -1)+crossCorrelation(transformedDistances, scanDistances, 0)+crossCorrelation(transformedDistances, scanDistances, 1));
 				//	if (!iPauseOn) dPrint(1,"Position (%f,%f,%f), diff  %.10f",generatedPose.x, generatedPose.y, generatedPose.angle, difference);
 					if (difference < minDifference) {
 						index = i;
@@ -276,6 +287,7 @@ void CJ2B2Demo::runSLAM()
 				 }
 				 
 				 iPreviousRobotPose = iRobotPose;
+				 iPreviousLaserReadings = cartesianReadings;
 				 
 				 iRobotPose = correctedPose;
 				
@@ -369,6 +381,7 @@ CJ2B2Demo::CJ2B2Demo(CJ2B2Client &aInterface)
     iPreviousOdometryPose(),
     iRobotGridMap(),
     iRobotPointMap(),
+    iPreviousLaserReadings(),
     iUsePointMap(true),
     iPauseOn(true)
 {
