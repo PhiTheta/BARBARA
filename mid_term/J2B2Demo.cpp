@@ -45,10 +45,10 @@
 #define MIN_WSPEED		0.3
 #define MAX_WSPEED		0.3
 #define MAX_SPEED		0.2
-#define MIN_SPEED		0.1
+#define MIN_SPEED		0.05
 #define MAGIC_CNST		2
 #define NUM_WAYPOINTS	14
-#define WEIGHT_DATA     0.2
+#define WEIGHT_DATA     0.14
 #define WEIGHT_SMOOTH	0.12
 #define A_TOLERANCE 	0.00001
 
@@ -77,8 +77,8 @@ typedef enum {
 } MotionState;
 
 struct pose2D {
-	int x;
-	int y;
+	float x;
+	float y;
 	float theta;
 };
 
@@ -95,9 +95,9 @@ float real_h = 3.7;
 bool has_plan = false;
 unsigned int step = 0;
 
-vector<node> path,smooth_path;
+vector<node> path;
 
-vector<node> smooth_astar_path;
+vector<pose2D> smooth_astar_path,original;
 int iMap[] = {	  
     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
     0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
@@ -149,13 +149,24 @@ inline float truncate(float val)
 	return val;
 }
 
-vector<node> smoothX(vector<node> &astar_path, float weight_data, float weight_smooth, float tolerance){
+void smoothX(vector<node> &astar_path, float weight_data, float weight_smooth, float tolerance){
 	
-	smooth_astar_path = astar_path;
-	int i;
-	float aux;
+	//Make a Copy of X and Y
+	original.clear();
+	smooth_astar_path.clear();
+	unsigned int i;node copy_path;
+	pose2D copy_smooth_path;
+	for(i=0;i<astar_path.size();i++){
+		copy_path = astar_path.at(i);
+		copy_smooth_path.x = (float)copy_path.x;
+		copy_smooth_path.y = (float)copy_path.y;
+		original.push_back(copy_smooth_path);
+		smooth_astar_path.push_back(copy_smooth_path);
+	}
+	
+	
 	float change = tolerance;
-	node aux_i, new_point, original, aux_i1, aux_i2;
+	pose2D aux_i, new_point, aux_i1, aux_i2, initial_XY;
 	
 		
 	while(change >= tolerance){
@@ -164,28 +175,36 @@ vector<node> smoothX(vector<node> &astar_path, float weight_data, float weight_s
 			
 			aux_i = smooth_astar_path.at(i);
 			new_point = smooth_astar_path.at(i);
-			original = astar_path.at(i);
+			initial_XY = original.at(i);
 			aux_i1 = smooth_astar_path.at(i-1);
 			aux_i2 = smooth_astar_path.at(i+1);
 			
-			new_point.x += weight_data * (original.x - new_point.x);
+			new_point.x += weight_data * (initial_XY.x - new_point.x);
 			new_point.x += weight_smooth * ( ( aux_i1.x + aux_i2.x) - ( 2.0 * new_point.x) );
 			change += fabs(aux_i.x - new_point.x);
 			smooth_astar_path.at(i) = new_point;
 		}
-		dPrint(1,"ToleranceX: %f", change);
+		//dPrint(1,"ToleranceX: %f", change);
 	}
 	
 }
 
-vector<node> smoothY(vector<node> &astar_path, float weight_data, float weight_smooth, float tolerance){
-
-	//vector<node> smooth_astar_path = astar_path;
-	smooth_astar_path = astar_path;
-	int i;
-	float aux;
+void smoothY(vector<node> &astar_path, float weight_data, float weight_smooth, float tolerance){
+	
+	original.clear();
+	smooth_astar_path.clear();
+	unsigned int i;node copy_path;
+	pose2D copy_smooth_path;
+	for(i=0;i<astar_path.size();i++){
+		copy_path = astar_path.at(i);
+		copy_smooth_path.x = (float)copy_path.x;
+		copy_smooth_path.y = (float)copy_path.y;
+		original.push_back(copy_smooth_path);
+		smooth_astar_path.push_back(copy_smooth_path);
+	}
+	
 	float change = tolerance;
-	node aux_i, new_point, original, aux_i1, aux_i2;
+	pose2D aux_i, new_point, aux_i1, aux_i2, initial_XY;
 	
 		
 	while(change >= tolerance){
@@ -194,56 +213,56 @@ vector<node> smoothY(vector<node> &astar_path, float weight_data, float weight_s
 			
 			aux_i = smooth_astar_path.at(i);
 			new_point = smooth_astar_path.at(i);
-			original = astar_path.at(i);
+			initial_XY = original.at(i);
 			aux_i1 = smooth_astar_path.at(i-1);
 			aux_i2 = smooth_astar_path.at(i+1);
 			
-			new_point.y += weight_data * (original.y - new_point.y);
+			new_point.y += weight_data * (initial_XY.y - new_point.y);
 			new_point.y += weight_smooth * ( ( aux_i1.y + aux_i2.y) - ( 2.0 * new_point.y) );
 			change += fabs(aux_i.y - new_point.y);
 			smooth_astar_path.at(i) = new_point;
 		}
-		dPrint(1,"ToleranceY: %f", change);
+		//dPrint(1,"ToleranceY: %f", change);
 	}
 }
 
-void smooth(vector<node> &astar_path, float weight_data, float weight_smooth, float tolerance){
+//void smooth(vector<node> &astar_path, float weight_data, float weight_smooth, float tolerance){
 
-	//vector<node> smooth_astar_path = astar_path;
-	smooth_astar_path = astar_path;
-	int i,m;
-	float aux;
-	float change = tolerance;
-	m=smooth_astar_path.size();
-	//bool test_flag = false;
+	////vector<node> smooth_astar_path = astar_path;
+	//smooth_astar_path = astar_path;
+	//int i,m;
+	//float aux;
+	//float change = tolerance;
+	//m=smooth_astar_path.size();
+	////bool test_flag = false;
 
-	while(change >= tolerance){
-		change = 0.0;
-		//if(!test_flag){
-		for(i=1;i<=2;i++){
+	//while(change >= tolerance){
+		//change = 0.0;
+		////if(!test_flag){
+		//for(i=1;i<=2;i++){
 			
-			node aux_i = smooth_astar_path.at(i);
-			node new_point = smooth_astar_path.at(i);
-			node aux_i1 = smooth_astar_path.at(i-1);
-			node aux_i2 = smooth_astar_path.at(i+1);
-		    node original = astar_path.at(i); 	
+			//node aux_i = smooth_astar_path.at(i);
+			//node new_point = smooth_astar_path.at(i);
+			//node aux_i1 = smooth_astar_path.at(i-1);
+			//node aux_i2 = smooth_astar_path.at(i+1);
+		    //node original = astar_path.at(i); 	
 			
 						
-			new_point.y += weight_data * (original.y - new_point.y);
+			//new_point.y += weight_data * (original.y - new_point.y);
 			
-			new_point.y += weight_smooth * ( ( aux_i1.y + aux_i2.y) - ( 2.0 * new_point.y) );
-			change += fabs(aux_i.y - new_point.y);
+			//new_point.y += weight_smooth * ( ( aux_i1.y + aux_i2.y) - ( 2.0 * new_point.y) );
+			//change += fabs(aux_i.y - new_point.y);
 			
 			
 			
-			new_point.x += weight_data * (original.x - new_point.x);
+			//new_point.x += weight_data * (original.x - new_point.x);
 			
-			new_point.x += weight_smooth * ( ( aux_i1.x + aux_i2.x) - ( 2.0 * new_point.x) );
-			change += fabs(aux_i.x - new_point.x);
-		}
+			//new_point.x += weight_smooth * ( ( aux_i1.x + aux_i2.x) - ( 2.0 * new_point.x) );
+			//change += fabs(aux_i.x - new_point.x);
+		//}
 
-	}
-}
+	//}
+//}
 
 //void smooth_test(float (&a_star_path)[18][2], float weight_data, float weight_smooth, float tolerance){
 
@@ -1058,7 +1077,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 	//float x_next[NUM_WAYPOINTS] = {3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.6, 3.6, 3.6, 3.6, 3.6, 3.6, 3.6};
 	//float y_next[NUM_WAYPOINTS] = {2.7, 2.7, 2.7, 2.7, 2.7, 2.7, 2.6, 2.5, 2.4, 2.3, 2.2, 2.1, 2.0};
 	float x_next[NUM_WAYPOINTS] = {3.6, 3.6, 3.6, 3.6, 2.7, 2.7, 1.6, 1.5,   1.0, 0.5, 0.9, 1.6, 2.4,  3};
-	float y_next[NUM_WAYPOINTS] = {2.7, 1.7, 1.5, 0.6, 1.5, 1.5, 0.65, 0.65, 0.65, 2.4, 2.4, 2.4, 2.7, 2.7};
+	float y_next[NUM_WAYPOINTS] = {2.3, 1.7, 1.5, 0.6, 1.5, 1.5, 0.65, 0.65, 0.65, 2.4, 2.4, 2.4, 2.7, 2.7};
 	//float x_next[NUM_WAYPOINTS] = {3.6, 2.7, 2.7, 1.6,  1.0,  1.0, };
 	//float y_next[NUM_WAYPOINTS] = {2.1, 1.5, 0.65, 0.65, 0.65, 2.4, };
 	
@@ -1139,36 +1158,30 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 				iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000);
 				const TPose2D *pose = pd.GetPose2D();
 				
-				iPose.x = pose->x/4.5*w;
-				iPose.y = pose->y/3.7*h;
+				iPose.x = (pose->x/4.5*w)+0.5;
+				iPose.y = (pose->y/3.7*h)+0.5;
+				dPrint(1,"Present X: %f, Present Y: %f", iPose.x, iPose.y );
+
 				iPose.theta = 0;
 			
-				wayPoint.x = x_next[wayPnumber]/4.5*w;
-				wayPoint.y = y_next[wayPnumber]/3.7*h;
+				wayPoint.x = (x_next[wayPnumber]/4.5*w+0.5);
+				wayPoint.y = (y_next[wayPnumber]/3.7*h+0.5);
 				//wayPoint.theta = 270;	
 				pathplan2 plan;
 				path = plan.get_graph(iMap,w,h,iPose.x,iPose.y,wayPoint.x,wayPoint.y);
-				for(unsigned int i = 0; i < path.size(); i++) {
-					node aaa = path.at(i);
-					dPrint(1, "x: %d y: %d F: %f G: %f H: %f parentx: %d parenty: %d", aaa.x, aaa.y,  aaa.F, aaa.G, aaa.H, aaa.px, aaa.py);
-				}
-				node end,endtest;
-				end.x=wayPoint.x;
-				end.y=wayPoint.y;
-				end.F = 0;
-				end.G = 0;
-				end.H = 0;
-				end.px = 0;
-				end.py = 0;
-				end.used=false;
-				path.pushback(end);
-				
-				//endtest = (path.back());
-				//dPrint("Last Point, X: %d,Y: %d",endtest.x, endtest.y);
+
 				smoothY(path,WEIGHT_DATA,WEIGHT_SMOOTH,A_TOLERANCE);
 				smoothX(path,WEIGHT_DATA,WEIGHT_SMOOTH,A_TOLERANCE);
+				
+				for(unsigned int i = 0; i < path.size(); i++) {
+					node aaa = path.at(i);
+					pose2D bbb = smooth_astar_path.at(i);
+					//dPrint(1, "x: %d y: %d F: %f G: %f H: %f parentx: %d parenty: %d", aaa.x, aaa.y,  aaa.F, aaa.G, aaa.H, aaa.px, aaa.py);
+					dPrint(1,"x: %d , newX: %f , y: %d , newy: %f", aaa.x, bbb.x, aaa.y, bbb.y);
+				}
+				
 				has_plan = true;
-				//step =0;
+				step =0;
 			}
 
 
@@ -1207,7 +1220,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 					Ax_next_stop_meters = (present.x * 4.5)/w;
 					Ay_next_stop_meters = (present.y * 3.7)/h;				
 					
-					node next_stop = smooth_astar_path.at(step+1);
+					pose2D next_stop = smooth_astar_path.at(step+1);
 					
 					//dPrint(1,"next_stop.x: %d, next_stop.y: %d", next_stop.x,next_stop.y);
 					
@@ -1224,8 +1237,6 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 					//dPrint(1,"y: %.2f->%.2f", y_present, y_next[step]);
 					dPrint(1,"x: %.2f->%.2f", x_present, x_next_stop_meters);
 					dPrint(1,"y: %.2f->%.2f", y_present, y_next_stop_meters);
-					dPrint(1,"next Smooth star point x: %f y: %f", x_next_stop_meters,y_next_stop_meters);
-					dPrint(1,"next A star point x: %f y: %f", x_next_stop_meters,y_next_stop_meters);
 					dPrint(1,"delta: %.2f, %.2f", dx, dy);
 					dPrint(1,"rho: %f",rho);
 					dPrint(1,"alpha is: %f",alpha);
@@ -1251,7 +1262,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 							
 							if (rho <= DIST_MARGIN) {
 	                            step++; 
-								motionState = StateTurning;
+								//motionState = StateTurning;
 								r_speed = MIN_SPEED;
 								r_wspeed = 0;
 								r_acc=0.15;
@@ -1365,7 +1376,8 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 					
 				}
                 
-			}
+			}                       
+
         } else {
             dPrint(1,"No MotionCtrl available - Terminating MotionDemo thread.");
             break;
