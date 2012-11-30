@@ -48,7 +48,7 @@
 #define MIN_SPEED		0.05
 #define MAGIC_CNST		2
 #define NUM_WAYPOINTS	14
-#define WEIGHT_DATA     0.14
+#define WEIGHT_DATA     0.12
 #define WEIGHT_SMOOTH	0.12
 #define A_TOLERANCE 	0.00001
 
@@ -183,6 +183,11 @@ void smoothX(vector<node> &astar_path, float weight_data, float weight_smooth, f
 			new_point.x += weight_smooth * ( ( aux_i1.x + aux_i2.x) - ( 2.0 * new_point.x) );
 			change += fabs(aux_i.x - new_point.x);
 			smooth_astar_path.at(i) = new_point;
+			
+			new_point.y += weight_data * (initial_XY.y - new_point.y);
+			new_point.y += weight_smooth * ( ( aux_i1.y + aux_i2.y) - ( 2.0 * new_point.y) );
+			change += fabs(aux_i.y - new_point.y);
+			smooth_astar_path.at(i) = new_point;
 		}
 		//dPrint(1,"ToleranceX: %f", change);
 	}
@@ -222,7 +227,7 @@ void smoothY(vector<node> &astar_path, float weight_data, float weight_smooth, f
 			change += fabs(aux_i.y - new_point.y);
 			smooth_astar_path.at(i) = new_point;
 		}
-		//dPrint(1,"ToleranceY: %f", change);
+		dPrint(1,"ToleranceY: %f", change);
 	}
 }
 
@@ -1076,8 +1081,8 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
   
 	//float x_next[NUM_WAYPOINTS] = {3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.6, 3.6, 3.6, 3.6, 3.6, 3.6, 3.6};
 	//float y_next[NUM_WAYPOINTS] = {2.7, 2.7, 2.7, 2.7, 2.7, 2.7, 2.6, 2.5, 2.4, 2.3, 2.2, 2.1, 2.0};
-	float x_next[NUM_WAYPOINTS] = {3.6, 3.6, 3.6, 3.6, 2.7, 2.7, 1.6, 1.5,   1.0, 0.5, 0.9, 1.6, 2.4,  3};
-	float y_next[NUM_WAYPOINTS] = {2.3, 1.7, 1.5, 0.6, 1.5, 1.5, 0.65, 0.65, 0.65, 2.4, 2.4, 2.4, 2.7, 2.7};
+	float x_next[NUM_WAYPOINTS] = {3.6, 3.3, 2.7, 1.6, 1.6, 1.5,   1.0, 0.5, 0.9, 1.6, 2.4,  3};
+	float y_next[NUM_WAYPOINTS] = {1.5, 0.5, 1.5, 0.6, 1.5, 1.5, 0.65, 0.65, 0.65, 2.4, 2.4, 2.4, 2.7, 2.7};
 	//float x_next[NUM_WAYPOINTS] = {3.6, 2.7, 2.7, 1.6,  1.0,  1.0, };
 	//float y_next[NUM_WAYPOINTS] = {2.1, 1.5, 0.65, 0.65, 0.65, 2.4, };
 	
@@ -1170,7 +1175,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 				pathplan2 plan;
 				path = plan.get_graph(iMap,w,h,iPose.x,iPose.y,wayPoint.x,wayPoint.y);
 
-				smoothY(path,WEIGHT_DATA,WEIGHT_SMOOTH,A_TOLERANCE);
+				//smoothY(path,WEIGHT_DATA,WEIGHT_SMOOTH,A_TOLERANCE);
 				smoothX(path,WEIGHT_DATA,WEIGHT_SMOOTH,A_TOLERANCE);
 				
 				for(unsigned int i = 0; i < path.size(); i++) {
