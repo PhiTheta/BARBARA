@@ -15,6 +15,8 @@
 #define MAP_HEIGHT		3.7
 #define MAP_ROWS		(37*2)
 #define MAP_COLS		(45*2)
+#define X_RES			MAP_WIDTH/MAP_COLS
+#define Y_RES			MAP_HEIGHT/MAP_ROWS
 
 class CJ2B2Demo : private gim::CSync, 
                   private gim::CThread
@@ -77,16 +79,17 @@ private:
   MaCI::Common::TTimestamp iLastOdometryTimestamp;
   MaCI::Ranging::TDeviceInformationPosition iLaserPosition;
   bool iFirstSLAMAttempt;
-  ISPose2D iRobotPose;
-  ISPose2D iPreviousRobotPose;
-  ISPose2D iOdometryPose;
-  ISPose2D iPreviousOdometryPose;
+  ISGridPose2D iRobotPose;
+  ISGridPose2D iPreviousRobotPose;
+  ISGridPose2D iOdometryPose;
+  ISGridPose2D iPreviousOdometryPose;
   int iRobotGridMap[MAP_ROWS][MAP_COLS];
   vector<ISPoint> iRobotPointMap;
-  vector<ISPoint> iPreviousLaserReadings;
+  vector<ISGridPoint> iPreviousLaserData;
   bool iUsePointMap;
   volatile bool iPauseOn;
   void updateMapForPose(ISPose2D pose);
+  void updateMapForGridPose(ISGridPose2D pose);
   void pointToMap(ISPoint point, int *x, int *y);
   void runSLAM();
 };
