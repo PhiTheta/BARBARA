@@ -2,11 +2,11 @@
 using namespace std;
 
 struct ISPose2D {
-    float x, y, angle;
+    double x, y, angle;
 };
 
 struct ISPoint {
-    float x, y;
+    double x, y;
 };
 
 ISPoint laserCartesian(double distance, double angle, float laser_to_robot);
@@ -14,7 +14,8 @@ ISPoint laserToWorld(double distance, double angle, ISPose2D currentPose, float 
 double distanceToPoint(ISPoint point);
 vector<ISPoint> filterPoints(vector<ISPoint> points);
 vector<double> getDistances(vector<ISPoint> set);
-double sumDifferences(vector<double> firstSet, vector<double> secondSet);
+double sumDifferences(vector<double> firstSet, vector<double> secondSet, bool printdiff);
+double sumDifferences(vector<ISPoint> firstSet, vector<ISPoint> secondSet, bool printdiff);
 ISPoint minValues(vector<ISPoint> set);
 vector<ISPoint> shiftPoints(vector<ISPoint> set, ISPoint offset);
 double getCorrelation(vector<ISPoint> firstSet, vector<ISPoint>secondSet, ISPoint shift);
@@ -24,3 +25,5 @@ vector<ISPoint> transformPoints(ISPose2D startPose, ISPose2D endPose, vector<ISP
 double avg(vector<double> set);
 double crossCorrelation(vector<double> X, vector<double> Y, int timeLag);
 double iterativeCrossCorrelation(vector<double> X, vector<double> Y);
+
+bool poseEqualsToPose(ISPose2D firstPose, ISPose2D secondPose);

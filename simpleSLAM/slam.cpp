@@ -33,7 +33,7 @@ ISPoint laserCartesian(double distance, double angle, float laser_to_robot)
 	ISPoint point;
 	//Laser origin coordinates
 	point.x = distance*cos(angle);
-	point.y = -distance*sin(angle);
+	point.y = distance*sin(angle);
 	
 	//Robot origin coordinates
 	point.y += laser_to_robot;
@@ -75,7 +75,7 @@ vector<double> getDistances(vector<ISPoint> set)
     return res;
 }
 
-double sumDifferences(vector<double> firstSet, vector<double> secondSet)
+double sumDifferences(vector<double> firstSet, vector<double> secondSet, bool printdiff)
 {
     if (firstSet.size() != secondSet.size()) {
         cout << "Two sets should have the same size!" << endl;
@@ -85,7 +85,34 @@ double sumDifferences(vector<double> firstSet, vector<double> secondSet)
     double res = 0;
     
     for (unsigned int i = 0; i < firstSet.size(); i++) {
-		res += fabs(pow(firstSet.at(i),2) - pow(secondSet.at(i),2));
+		 double diff = fabs(firstSet.at(i) - secondSet.at(i));// fabs(pow(firstSet.at(i),2) - pow(secondSet.at(i),2));
+		 if (diff < 0.0001) diff = 0.0f;
+		 res += diff;
+		 //if (printdiff) cout << "DIFF " << i << ", " << diff << endl;
+		 if (printdiff&& i== firstSet.size()/2) cout << "DIFF " << i << ", " << diff << firstSet.at(i) <<", " <<secondSet.at(i)<< endl;
+		//res += fabs(firstSet.at(i) - secondSet.at(i));
+	}
+	return res;
+}
+
+double sumDifferences(vector<ISPoint> firstSet, vector<ISPoint> secondSet, bool printdiff)
+{
+    if (firstSet.size() != secondSet.size()) {
+        cout << "Two sets should have the same size!" << endl;
+        return 0;
+    }
+    
+    double res = 0;
+    
+    for (unsigned int i = 0; i < firstSet.size(); i++) {
+		ISPoint point1 = firstSet.at(i);
+		ISPoint point2 = secondSet.at(i);
+		double diff = fabs(point1.x-point2.x)+fabs(point1.y-point2.y);
+		 //double diff = fabs(firstSet.at(i) - secondSet.at(i));// fabs(pow(firstSet.at(i),2) - pow(secondSet.at(i),2));
+		 if (diff < 0.0001) diff = 0.0f;
+		 res += diff;
+		 //if (printdiff) cout << "DIFF " << i << ", " << diff << endl;
+		 if (printdiff && i== firstSet.size()/2) cout << "DIFF " << i << ", " << diff << " (" << point1.x << "," << point1.y << "), (" << point2.x << "," << point2.y << ")" << endl;
 		//res += fabs(firstSet.at(i) - secondSet.at(i));
 	}
 	return res;
@@ -219,17 +246,17 @@ vector<ISPose2D> generatePoses(ISPose2D currentPose, float maxRadius, int numRad
 vector<ISPoint> transformPoints(ISPose2D startPose, ISPose2D endPose, vector<ISPoint> points)
 {
     vector<ISPoint> transformedPoints;
-    float theta = startPose.angle - endPose.angle;
-    float tx = endPose.x - startPose.x;
-    float ty = endPose.y - startPose.y;
+    double theta = endPose.angle - startPose.angle;
+    double tx = endPose.x - startPose.x;
+    double ty = endPose.y - startPose.y;
     
 	for (vector<ISPoint>::iterator iterator = points.begin(); iterator < points.end(); iterator++) {
         ISPoint point = *iterator;
-        float x = point.x;
-        float y = point.y;
+        double x = point.x;
+        double y = point.y;
         ISPoint newPoint;
-        newPoint.x = x*cos(theta)+y*sin(theta)+tx;
-        newPoint.y = -x*sin(theta)+y*cos(theta)+ty;
+        newPoint.x = x*cos(theta)-y*sin(theta)+tx;
+        newPoint.y = x*sin(theta)+y*cos(theta)+ty;
         transformedPoints.push_back(newPoint);
 	}
     return transformedPoints;
@@ -292,3 +319,11 @@ double iterativeCrossCorrelation(vector<double> X, vector<double> Y)
     return res;
 }
 
+bool poseEqualsToPose(ISPose2D firstPose, ISPose2D secondPose)
+{
+	bool res = false;
+	if (fabs(firstPose.x-secondPose.x) < 0.0001 && fabs(firstPose.y-secondPose.y) < 0.0001 && fabs(firstPose.angle-secondPose.angle) < 0.0001) {
+		res = true;
+	}
+	return res;
+}
