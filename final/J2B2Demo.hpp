@@ -13,8 +13,8 @@
 
 #define MAP_WIDTH		4.5
 #define MAP_HEIGHT		3.7
-#define MAP_ROWS		(37*2)
-#define MAP_COLS		(45*2)
+#define MAP_ROWS		(37*3)
+#define MAP_COLS		(45*3)
 #define X_RES			MAP_WIDTH/MAP_COLS
 #define Y_RES			MAP_HEIGHT/MAP_ROWS
 
@@ -83,15 +83,12 @@ private:
   ISGridPose2D iPreviousRobotPose;
   ISGridPose2D iOdometryPose;
   ISGridPose2D iPreviousOdometryPose;
-  int iRobotGridMap[MAP_ROWS][MAP_COLS];
-  vector<ISPoint> iRobotPointMap;
+  vector<ISGridPoint> iGridMap;
   vector<ISGridPoint> iPreviousLaserData;
-  bool iUsePointMap;
   volatile bool iPauseOn;
-  void updateMapForPose(ISPose2D pose);
-  void updateMapForGridPose(ISGridPose2D pose);
-  void pointToMap(ISPoint point, int *x, int *y);
+  void updateMap(ISGridPose2D pose, vector<ISGridPoint> scans);
   void runSLAM();
+  vector<ISGridPoint> getEuclideanLaserData();
 };
 
 #endif
