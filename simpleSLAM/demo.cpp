@@ -6,81 +6,51 @@
 
 int main(int argc, char *argv[])
 {
-    ISPose2D currentPose;
-    currentPose.x = 3;
-    currentPose.y = 2.7;
-    currentPose.angle = 0;
+    float x_res = 0.1;
+    float y_res = 0.1;
     
-    //Test generation of new poses
-    vector<ISPose2D> poses = generatePoses(currentPose, 0.5, 4, 8, 0.01, 5);
-    /*
-     cout << "Size: " << poses.size() << endl;
-     
-     for (vector<ISPose2D>::iterator iterator = poses.begin(); iterator < poses.end(); iterator++) {
-     ISPose2D pose = *iterator;
-     cout << "x: " << pose.x << "; y: " << pose.y << "; angle: " << pose.angle << endl;
-     }
-     */
-    
+    ISGridPose2D predictedPose;
+    predictedPose.x = 0;
+    predictedPose.y = 0;
+    predictedPose.angle = 0.0f;
     
     //Test transformation of points
-    vector<ISPoint> points;
+    vector<ISGridPoint> scans;
     for (int i = 0; i < 10; i++) {
-        ISPoint point;
-        point.x = i;
+        ISGridPoint point;
+        point.x = -5;
         point.y = i;
-        points.push_back(point);
+        scans.push_back(point);
+        point.x = 5;
+        scans.push_back(point);
+    }
+    for (int i = -4; i <= 4; i++) {
+        ISGridPoint point;
+        point.x = i;
+        point.y = 10;
+        scans.push_back(point);
     }
     
+    ISGridPose2D generatedPose = predictedPose;
+    generatedPose.angle = M_PI_4;
+    vector<ISGridPoint> transformedScans = transformGridPoints(predictedPose, generatedPose, scans, x_res, y_res);
     
-    ISPose2D newPose1;
-    newPose1.x = 3;
-    newPose1.y = 3;
-    newPose1.angle = M_PI/6;
+    cout << "   Predicted   |   Transformed   " << endl;
+    cout << "---------------+-----------------" << endl;
+    for (unsigned int i = 0; i < scans.size(); i++) {
+        ISGridPoint originalPoint = scans.at(i);
+        cout << "   " << setw(3) << originalPoint.x << ", " << setw(3) << originalPoint.y << "    |   ";
+        if (i < transformedScans.size()) {
+            ISGridPoint transformedPoint = transformedScans.at(i);
+            cout << setw(3) << transformedPoint.x << ", " << setw(3) << transformedPoint.y;
+        }
+        cout << endl;
+    }
     
-    ISPose2D newPose2;
-    newPose2.x = 3;
-    newPose2.y = 3;
-    newPose2.angle = 0;
-    
-    vector<ISPoint> newPoints1 = transformPoints(currentPose, newPose1, points);
-    vector<ISPoint> newPoints2 = transformPoints(currentPose, newPose2, points);
-    
-    cout << endl;
-    cout << "In 2nd column transformed points (270deg rotation, (1m; 0.3m) translation):" << endl;
-    cout << "In 3rd column transformed points (0deg rotation, (1m; 0m) translation):" << endl;
-    cout << "Assuming that x axis extends to the east (relative to the robot), y - to the north, and positive angle is CCW" << endl;
-    cout << endl;
-    cout << "     Initial points          |         T+R points           |     Slightly translated points " << endl;
-    cout << "-----------------------------+------------------------------+--------------------------------" << endl;
-    
-	for (int i = 0; i < points.size(); i++) {
-        ISPoint point = points.at(i);
-        ISPoint newPoint1 = newPoints1.at(i);
-        ISPoint newPoint2 = newPoints2.at(i);
-		cout << "x: " << setw(10) << setprecision(2) << point.x     << "; y: " << setw(10) << setprecision(2) << point.y     << " | "
-        << "x: " << setw(10) << setprecision(2) << newPoint1.x << "; y: " << setw(10) << setprecision(2) << newPoint1.y << " | "
-        << "x: " << setw(10) << setprecision(2) << newPoint2.x << "; y: " << setw(10) << setprecision(2) << newPoint2.y << endl;
-	}
-    cout << endl;
-    
-    float min1 = minValues(points);
-    float min2 = minValues(newPoints1);
-    float min3 = minValues(newPoints2);
-    
-    ISPoint offset;
-    offset.x = min(min(min1.x, min2.x), min3.x);
-    offset.y = min(min(min1.y, min2.y), min3.y);
+    cout << endl << endl;
     
     
-    cout << "Offset: " << offset.x << ", " << offset.y << endl << endl;
     
-    //Test correlation
-    double correlation1 = getCorrelation(points, newPoints1, offset);
-    double correlation2 = getCorrelation(points, newPoints2, offset);
-    cout << "Correlation 1: " << correlation1 << endl;
-    cout << "Correlation 2: " << correlation2 << endl;
-    cout << endl;
     
     return 0;
 }

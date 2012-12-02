@@ -103,7 +103,7 @@ vector<ISGridPose2D> generateGridPoses(ISGridPose2D currentPose, float maxRadius
 }
 
 
-vector<ISGridPoint> transformGridPoints(ISGridPose2D startPose, ISGridPose2D endPose, vector<ISGridPoint> points, float x_res, float y_res)
+vector<ISGridPoint> transformGridPoints(ISGridPose2D startPose, ISGridPose2D endPose, vector<ISGridPoint> points)
 {
 	if (gridPoseEqualsToGridPose(startPose, endPose)) {
 		return points;
@@ -120,14 +120,8 @@ vector<ISGridPoint> transformGridPoints(ISGridPose2D startPose, ISGridPose2D end
         newPoint.index = point.index;
         
         //Rotation
-        double x = point.x*cos(theta)-point.y*sin(theta);
-        double y = point.x*sin(theta)+point.y*cos(theta); 
-		newPoint.x = round(x/x_res);
-		newPoint.y = round(y/y_res);
-		
-		//Translation
-        newPoint.x += tx;
-        newPoint.y += ty; 
+        newPoint.x = round(point.x*cos(theta)-point.y*sin(theta)+tx);
+        newPoint.y = round(point.x*sin(theta)+point.y*cos(theta)+ty);
         
         if (!setContainsPoint(transformedPoints, newPoint)) {
 	        transformedPoints.push_back(newPoint);
