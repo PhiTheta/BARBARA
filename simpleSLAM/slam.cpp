@@ -171,8 +171,8 @@ ISGridPoint laserToWorld(double distance, double angle, ISGridPose2D currentPose
 ISGridPoint robotToWorld(ISGridPose2D pose, ISGridPoint point)
 {
 	ISGridPoint newPoint;
-	newPoint.x = round(point.x*cos(pose.angle)-point.y*sin(pose.angle)+pose.x);
-	newPoint.y = round(point.x*sin(pose.angle)+point.y*cos(pose.angle)+pose.y);
+	newPoint.x = round(point.x*cos(-pose.angle)-point.y*sin(-pose.angle))+pose.x;
+	newPoint.y = round(point.x*sin(-pose.angle)+point.y*cos(-pose.angle))+pose.y;
 	return newPoint;
 }
 

@@ -88,14 +88,18 @@ inline float truncate(float val)
 	return val;
 }
 
-ISGridPose2D gridPoseFromTPose(const MaCI::Position::TPose2D *pose)
+ISGridPose2D CJ2B2Demo::gridPoseFromTPose(const MaCI::Position::TPose2D *pose)
 {
 	ISGridPose2D res;
-	res.x = round(pose->x/X_RES/2);
-	res.y = round(pose->y/Y_RES/2);
+	double xind = pose->x;
+	double yind = pose->y;
+	xind /= (X_RES*2);
+	yind /= (Y_RES*2);
+	res.x = round(xind);
+	res.y = round(yind);
 	res.angle = (double)pose->a;
 	
-	//if (!iPauseOn) dPrint(1,"%f,%f -> %d,%d", point.x, point.y, x_index, y_index);
+	if (!iPauseOn) dPrint(1,"%f,%f -> %f,%f -> %d,%d [%f,%f]", pose->x, pose->y, xind, yind, res.x, res.y, X_RES, Y_RES);
 	
 	return res;
 }
@@ -156,13 +160,16 @@ void CJ2B2Demo::runSLAM()
 				iLastOdometryTimestamp = iLastLaserTimestamp;
 				iOdometryPose = gridPoseFromTPose(pose2);
 				iPreviousRobotPose = iRobotPose;
+				
+				int dx = round((pose2->x-pose1->x)/X_RES/2);
+				int dy = round((pose2->y-pose1->y)/Y_RES/2);
 		
 				if (!iPauseOn) dPrint(1, "Previous odometry %d,%d,%f; Current odometry %d,%d,%f", iPreviousOdometryPose.x,iPreviousOdometryPose.y,iPreviousOdometryPose.angle, iOdometryPose.x,iOdometryPose.y,iOdometryPose.angle);
 			
 			
 				ISGridPose2D poseDifference;
-				poseDifference.x = iOdometryPose.x-iPreviousOdometryPose.x;
-				poseDifference.y = iOdometryPose.y-iPreviousOdometryPose.y;
+				poseDifference.x = dx;
+				poseDifference.y = dy;
 				poseDifference.angle = iOdometryPose.angle-iPreviousOdometryPose.angle;
 				
 				if (!iPauseOn) dPrint(1, "Difference %d,%d,%f", poseDifference.x,poseDifference.y,poseDifference.angle);
@@ -207,8 +214,8 @@ void CJ2B2Demo::runSLAM()
 					ISGridPose2D generatedPose = generatedPoses.at(i);
 					
 					
-					//vector<ISGridPoint> transformedPoints = transformGridPoints(iPreviousRobotPose, generatedPose, iPreviousLaserData, X_RES, Y_RES);
-					vector<ISGridPoint> transformedPoints = transformGridPoints(predictedPose, generatedPose, euclideanLaserData, X_RES, Y_RES);
+					//vector<ISGridPoint> transformedPoints = transformGridPoints(iPreviousRobotPose, generatedPose, iPreviousLaserData);
+					vector<ISGridPoint> transformedPoints = transformGridPoints(predictedPose, generatedPose, euclideanLaserData);
 					int difference = sumGridDifferences(transformedPoints, euclideanLaserData, false);
 					int poseDeviation = getPoseDifference(generatedPose, predictedPose);
 					
