@@ -108,11 +108,11 @@ int iMap[] = {
     0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,
     0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,
     0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
@@ -120,17 +120,17 @@ int iMap[] = {
     0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
@@ -149,7 +149,7 @@ inline float truncate(float val)
 	return val;
 }
 
-void smoothX(vector<node> &astar_path, float weight_data, float weight_smooth, float tolerance){
+void smooth(vector<node> &astar_path, float weight_data, float weight_smooth, float tolerance){
 	
 	//Make a Copy of X and Y
 	original.clear();
@@ -194,80 +194,6 @@ void smoothX(vector<node> &astar_path, float weight_data, float weight_smooth, f
 	
 }
 
-void smoothY(vector<node> &astar_path, float weight_data, float weight_smooth, float tolerance){
-	
-	original.clear();
-	smooth_astar_path.clear();
-	unsigned int i;node copy_path;
-	pose2D copy_smooth_path;
-	for(i=0;i<astar_path.size();i++){
-		copy_path = astar_path.at(i);
-		copy_smooth_path.x = (float)copy_path.x;
-		copy_smooth_path.y = (float)copy_path.y;
-		original.push_back(copy_smooth_path);
-		smooth_astar_path.push_back(copy_smooth_path);
-	}
-	
-	float change = tolerance;
-	pose2D aux_i, new_point, aux_i1, aux_i2, initial_XY;
-	
-		
-	while(change >= tolerance){
-		change = 0.0;					
-		for(i=1;i<=smooth_astar_path.size()-2;i++){
-			
-			aux_i = smooth_astar_path.at(i);
-			new_point = smooth_astar_path.at(i);
-			initial_XY = original.at(i);
-			aux_i1 = smooth_astar_path.at(i-1);
-			aux_i2 = smooth_astar_path.at(i+1);
-			
-			new_point.y += weight_data * (initial_XY.y - new_point.y);
-			new_point.y += weight_smooth * ( ( aux_i1.y + aux_i2.y) - ( 2.0 * new_point.y) );
-			change += fabs(aux_i.y - new_point.y);
-			smooth_astar_path.at(i) = new_point;
-		}
-		dPrint(1,"ToleranceY: %f", change);
-	}
-}
-
-//void smooth(vector<node> &astar_path, float weight_data, float weight_smooth, float tolerance){
-
-	////vector<node> smooth_astar_path = astar_path;
-	//smooth_astar_path = astar_path;
-	//int i,m;
-	//float aux;
-	//float change = tolerance;
-	//m=smooth_astar_path.size();
-	////bool test_flag = false;
-
-	//while(change >= tolerance){
-		//change = 0.0;
-		////if(!test_flag){
-		//for(i=1;i<=2;i++){
-			
-			//node aux_i = smooth_astar_path.at(i);
-			//node new_point = smooth_astar_path.at(i);
-			//node aux_i1 = smooth_astar_path.at(i-1);
-			//node aux_i2 = smooth_astar_path.at(i+1);
-		    //node original = astar_path.at(i); 	
-			
-						
-			//new_point.y += weight_data * (original.y - new_point.y);
-			
-			//new_point.y += weight_smooth * ( ( aux_i1.y + aux_i2.y) - ( 2.0 * new_point.y) );
-			//change += fabs(aux_i.y - new_point.y);
-			
-			
-			
-			//new_point.x += weight_data * (original.x - new_point.x);
-			
-			//new_point.x += weight_smooth * ( ( aux_i1.x + aux_i2.x) - ( 2.0 * new_point.x) );
-			//change += fabs(aux_i.x - new_point.x);
-		//}
-
-	//}
-//}
 
 //void smooth_test(float (&a_star_path)[18][2], float weight_data, float weight_smooth, float tolerance){
 
@@ -1081,8 +1007,8 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
   
 	//float x_next[NUM_WAYPOINTS] = {3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.6, 3.6, 3.6, 3.6, 3.6, 3.6, 3.6};
 	//float y_next[NUM_WAYPOINTS] = {2.7, 2.7, 2.7, 2.7, 2.7, 2.7, 2.6, 2.5, 2.4, 2.3, 2.2, 2.1, 2.0};
-	float x_next[NUM_WAYPOINTS] = {3.6, 3.3, 2.7, 1.6, 1.6, 1.5,   1.0, 0.5, 0.9, 1.6, 2.4,  3};
-	float y_next[NUM_WAYPOINTS] = {1.5, 0.5, 1.5, 0.6, 1.5, 1.5, 0.65, 0.65, 0.65, 2.4, 2.4, 2.4, 2.7, 2.7};
+	float x_next[NUM_WAYPOINTS] = {3.3, 3.6, 3.6, 2.4, 1.0, 1.5,   1.0, 0.5, 0.9, 1.6, 2.4,  3};
+	float y_next[NUM_WAYPOINTS] = {2.4, 1.5, 0.5, 1.6, 0.6, 1.5, 0.65, 0.65, 0.65, 2.4, 2.4, 2.4, 2.7, 2.7};
 	//float x_next[NUM_WAYPOINTS] = {3.6, 2.7, 2.7, 1.6,  1.0,  1.0, };
 	//float y_next[NUM_WAYPOINTS] = {2.1, 1.5, 0.65, 0.65, 0.65, 2.4, };
 	
@@ -1106,9 +1032,10 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
   bool check_flag = false, motion_flag = false; // for debugging
   
   //Control Loop from Lecture Slides
-  float rho=1, alpha, beta, A,B;
+  float rho=0, previous_rho, error_rho, alpha, beta, A,B;
   float dx=0.1, dy=0.1;
-  float K_rho= 0.15, K_alpha=0.7, K_beta=-0.05, K1 =1, K2 =3;
+  float K_rho= 0.15, K_alpha=0.05, K_beta=-0.05, K_P = 0.01, K_D = 4 ;
+
   //float K_rho= 0.3, K_alpha=0.7, K_beta=-0.15;
   //float K_rho= 1, K_alpha=2.66, K_beta=(-0.5);
   //int step = 0;
@@ -1175,8 +1102,8 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 				pathplan2 plan;
 				path = plan.get_graph(iMap,w,h,iPose.x,iPose.y,wayPoint.x,wayPoint.y);
 
-				//smoothY(path,WEIGHT_DATA,WEIGHT_SMOOTH,A_TOLERANCE);
-				smoothX(path,WEIGHT_DATA,WEIGHT_SMOOTH,A_TOLERANCE);
+			
+				smooth(path,WEIGHT_DATA,WEIGHT_SMOOTH,A_TOLERANCE);
 				
 				for(unsigned int i = 0; i < path.size(); i++) {
 					node aaa = path.at(i);
@@ -1264,15 +1191,18 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 						case StateDriving:
 						{
 							rho = sqrt(dx*dx + dy*dy);
-							
+							error_rho = (rho - previous_rho)/0.2;
 							if (rho <= DIST_MARGIN) {
 	                            step++; 
-								//motionState = StateTurning;
+								motionState = StateTurning;
 								r_speed = MIN_SPEED;
 								r_wspeed = 0;
 								r_acc=0.15;
 								iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
 	                            ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+	                            //iInterface.iMotionCtrl->SetStop();
+	                            //ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+	                            motionState = StateTurning;
 								continue;
 							} else {
 								
@@ -1296,21 +1226,21 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 									beta = -(a_present + alpha);
 									beta = truncate(beta);
 											
-									//r_speed = 0.2;
-									r_speed = K_rho * rho;
-									r_wspeed = K_alpha * alpha + K_beta * beta;
-									
-									//A = K2 * (alpha - atan(-1*K1*beta));
-									//B = ( 1 + (K1/(1 + (K1*beta)*(K1*beta))) ) * sin(alpha);
-									
-									//r_wspeed = ( -1 * r_speed * (A + B) ) / rho;
+									r_speed = 0.05;
+									//r_speed = K_rho * rho;
+									//r_wspeed = K_alpha * alpha + K_beta * beta;
+									r_wspeed = K_alpha * alpha;
+									//r_wspeed = K_P * rho + K_D * error_rho;
+
+									previous_rho = rho;
+
 									
 									if (fabs(alpha) > M_PI_2) {
 										r_speed *= -1;
 									}
 									
-									r_speed *= 2;
-									r_wspeed *= 2;
+									//r_speed *= 2;
+									//r_wspeed *= 2;
 									//r_speed = MAX(MIN(r_speed, MAX_SPEED), -MAX_SPEED);
 									if( (r_speed >= 0.0) || (r_speed = -0.0) ){
 										r_speed = MAX(MIN(r_speed, MAX_SPEED), MIN_SPEED);
