@@ -13,8 +13,10 @@
 
 #define MAP_WIDTH		4.5
 #define MAP_HEIGHT		3.7
-#define MAP_ROWS		(37*2)
-#define MAP_COLS		(45*2)
+#define MAP_ROWS		(37*10)
+#define MAP_COLS		(45*10)
+#define X_RES			MAP_WIDTH/MAP_COLS
+#define Y_RES			MAP_HEIGHT/MAP_ROWS
 
 class CJ2B2Demo : private gim::CSync, 
                   private gim::CThread
@@ -77,18 +79,17 @@ private:
   MaCI::Common::TTimestamp iLastOdometryTimestamp;
   MaCI::Ranging::TDeviceInformationPosition iLaserPosition;
   bool iFirstSLAMAttempt;
-  ISPose2D iRobotPose;
-  ISPose2D iPreviousRobotPose;
-  ISPose2D iOdometryPose;
-  ISPose2D iPreviousOdometryPose;
-  int iRobotGridMap[MAP_ROWS][MAP_COLS];
-  vector<ISPoint> iRobotPointMap;
-  vector<ISPoint> iPreviousLaserReadings;
-  bool iUsePointMap;
+  ISGridPose2D iRobotPose;
+  ISGridPose2D iPreviousRobotPose;
+  ISGridPose2D iOdometryPose;
+  ISGridPose2D iPreviousOdometryPose;
+  vector<ISGridPoint> iGridMap;
+  vector<ISGridPoint> iPreviousLaserData;
   volatile bool iPauseOn;
-  void updateMapForPose(ISPose2D pose);
-  void pointToMap(ISPoint point, int *x, int *y);
+  void updateMap(ISGridPose2D pose, vector<ISGridPoint> scans);
   void runSLAM();
+  ISGridPose2D gridPoseFromTPose(const MaCI::Position::TPose2D *pose);
+  vector<ISGridPoint> getEuclideanLaserData();
 };
 
 #endif

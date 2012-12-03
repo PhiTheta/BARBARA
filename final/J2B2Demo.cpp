@@ -76,45 +76,6 @@ float real_h = 3.7;
 bool has_plan = false;
 unsigned int step = 0;
 //vector<node> path;
-int iMap[] = {	  
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,0,0,0,1,1,1,0,
-    0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,0,0,0,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,0,0,0,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-};
 
 inline float truncate(float val)
 {
@@ -126,14 +87,34 @@ inline float truncate(float val)
 	}
 	return val;
 }
-	
-ISPose2D poseFromTPose(const MaCI::Position::TPose2D *pose)
+
+ISGridPose2D CJ2B2Demo::gridPoseFromTPose(const MaCI::Position::TPose2D *pose)
 {
-	ISPose2D res;
-	res.x = pose->x;
-	res.y = -pose->y;
-	res.angle = pose->a;
+	ISGridPose2D res;
+	double xind = pose->x;
+	double yind = pose->y;
+	xind /= (X_RES*2);
+	yind /= (Y_RES*2);
+	res.x = round(xind);
+	res.y = round(yind);
+	res.angle = (double)pose->a;
+	
+	if (!iPauseOn) dPrint(1,"%f,%f -> %f,%f -> %d,%d [%f,%f]", pose->x, pose->y, xind, yind, res.x, res.y, X_RES, Y_RES);
+	
 	return res;
+}
+
+vector<ISGridPoint> CJ2B2Demo::getEuclideanLaserData()
+{
+	vector<ISGridPoint> euclideanLaserData;
+	int index = 0;
+	for(EACH_IN_i(iLastLaserDistanceArray)) {
+		ISGridPoint point = euclideanLaserPoint(i->distance, i->angle, iLaserPosition.x, X_RES, Y_RES, index++);
+		if (!setContainsPoint(euclideanLaserData, point)) {
+			euclideanLaserData.push_back(point);
+		}
+	}
+	return euclideanLaserData;
 }
 
 void CJ2B2Demo::runSLAM()
@@ -150,17 +131,13 @@ void CJ2B2Demo::runSLAM()
 			if (iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000)) {
 				const TPose2D *pose = pd.GetPose2D();
 				if (pose) {
-					ISPose2D firstPose = poseFromTPose(pose);
-					//updateMapForPose(firstPose);
+					iRobotPose = gridPoseFromTPose(pose);
 					iFirstSLAMAttempt = false;
-					dPrint(1, "Getting very first odometry %f,%f,%f", firstPose.x,firstPose.y,firstPose.angle);
-					iRobotPose = firstPose;
+					dPrint(1, "Getting very first odometry %d,%d,%f", iRobotPose.x,iRobotPose.y,iRobotPose.angle);
 					
-					vector<ISPoint> cartesianReadings;
-					for(EACH_IN_i(iLastLaserDistanceArray)) {
-						cartesianReadings.push_back(laserCartesian(i->distance, i->angle, iLaserPosition.x));
-					}
-					iPreviousLaserReadings = cartesianReadings;
+					vector<ISGridPoint> euclideanLaserData = getEuclideanLaserData();
+					updateMap(iRobotPose, euclideanLaserData);
+					iPreviousLaserData = euclideanLaserData;
 				}
 			}
 			
@@ -172,199 +149,122 @@ void CJ2B2Demo::runSLAM()
 		if (iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, iLastOdometryTimestamp.GetGimTime())) {
 			
 			const TPose2D *pose1 = pd.GetPose2D();	
-			ISPose2D previousPose = poseFromTPose(pose1);
-			//iPreviousOdometryPose = previousPose;
+			ISGridPose2D previousPose = gridPoseFromTPose(pose1);
 			
-			MaCI::Common::TTimestamp lastOdometry = MaCI::Common::TTimestamp(iLastLaserTimestamp.GetGimTime());
-			
-			if (iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, lastOdometry.GetGimTime())) {
+			if (iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, iLastLaserTimestamp.GetGimTime())) {
 				const TPose2D *pose2 = pd.GetPose2D();
-				const MaCI::Common::TTimestamp *newTimestamp = pd.GetTimestamp();
 				
-				//if (!iPauseOn) dPrint(1,"Previous time %f Current time %f", iLastOdometryTimestamp.GetGimTime().getTimeInSeconds(), lastOdometry.GetGimTime().getTimeInSeconds());
+				if (!iPauseOn) dPrint(1,"Previous time %f Current time %f", iLastOdometryTimestamp.GetGimTime().getTimeInSeconds(), iLastLaserTimestamp.GetGimTime().getTimeInSeconds());
 				
-				iLastOdometryTimestamp.SetTime(newTimestamp->GetGimTime());
 				iPreviousOdometryPose = previousPose;
-				iOdometryPose = poseFromTPose(pose2);
+				iLastOdometryTimestamp = iLastLaserTimestamp;
+				iOdometryPose = gridPoseFromTPose(pose2);
+				iPreviousRobotPose = iRobotPose;
+				
+				int dx = round((pose2->x-pose1->x)/X_RES/2);
+				int dy = round((pose2->y-pose1->y)/Y_RES/2);
 		
-				if (!iPauseOn) dPrint(1, "Previous odometry %f,%f,%f; Current odometry %f,%f,%f", iPreviousOdometryPose.x,iPreviousOdometryPose.y,iPreviousOdometryPose.angle, iOdometryPose.x,iOdometryPose.y,iOdometryPose.angle);
+				if (!iPauseOn) dPrint(1, "Previous odometry %d,%d,%f; Current odometry %d,%d,%f", iPreviousOdometryPose.x,iPreviousOdometryPose.y,iPreviousOdometryPose.angle, iOdometryPose.x,iOdometryPose.y,iOdometryPose.angle);
 			
-				if (!iPauseOn) dPrint(1, "Previous pose %f,%f,%f; Current pose %f,%f,%f", iPreviousRobotPose.x,iPreviousRobotPose.y,iPreviousRobotPose.angle, iRobotPose.x,iRobotPose.y,iRobotPose.angle);
 			
-				ISPose2D poseDifference;
-				poseDifference.x = iOdometryPose.x-iPreviousOdometryPose.x;
-				poseDifference.y = iOdometryPose.y-iPreviousOdometryPose.y;
+				ISGridPose2D poseDifference;
+				poseDifference.x = dx;
+				poseDifference.y = dy;
 				poseDifference.angle = iOdometryPose.angle-iPreviousOdometryPose.angle;
 				
-				if (!iPauseOn) dPrint(1, "Difference %f,%f,%f", poseDifference.x,poseDifference.y,poseDifference.angle);
+				if (!iPauseOn) dPrint(1, "Difference %d,%d,%f", poseDifference.x,poseDifference.y,poseDifference.angle);
 		
-				ISPose2D predictedPose;
+				ISGridPose2D predictedPose;
 				predictedPose.x = iRobotPose.x+poseDifference.x;
 				predictedPose.y = iRobotPose.y+poseDifference.y;
 				predictedPose.angle = iRobotPose.angle+poseDifference.angle;
 				
+				if (!iPauseOn) dPrint(1, "Previous pose %d,%d,%f; Predicted pose %d,%d,%f", iPreviousRobotPose.x,iPreviousRobotPose.y,iPreviousRobotPose.angle, predictedPose.x,predictedPose.y,predictedPose.angle);
 				
-				vector<ISPoint> cartesianReadings;
-				for(EACH_IN_i(iLastLaserDistanceArray)) {
-					cartesianReadings.push_back(laserCartesian(i->distance, i->angle, iLaserPosition.x));
-				}
+				vector<ISGridPoint> euclideanLaserData = getEuclideanLaserData();
 			
 				//Generate different poses around predicted position
-				float maxRadius = 0.03;
-				int numCircles = 5;
+				float maxRadius = 0.3;
+				int numCircles = 3;
 				int numPositionsInCircle = 8;
 				float maxAngleDeviation = 0.03;
-				int numAngles = 31;
+				int numAngles = 11;
 				
 				
-				vector<ISPose2D> generatedPoses = generatePoses(predictedPose, 
-																maxRadius, 
-																numCircles,
-																numPositionsInCircle,
-																maxAngleDeviation,
-																numAngles);
+				vector<ISGridPose2D> generatedPoses = generateGridPoses(predictedPose, 
+																		maxRadius, 
+																		numCircles,
+																		numPositionsInCircle,
+																		maxAngleDeviation,
+																		numAngles,
+																		X_RES,
+																		Y_RES);
 				  
-				//Calculate transformed laser readings for each of the pose
-				//Also calculate offset, used in correlation method
-				
-			    double minDifference = DBL_MAX;
+				  
+				  
+				  
+				  
+				//Calculate transformed laser readings for each of the pose				
+			    int minDifference = INT_MAX;
+			    int minPoseDeviation = INT_MAX;
 			    int index = -1;
-				vector<double> scanDistances = getDistances(cartesianReadings);
 				
 				//if (!iPauseOn) dPrint(1,"Real Position (%f,%f,%f) diff  %f", predictedPose.x, predictedPose.y, predictedPose.angle, fabs(sumDifferences(scanDistances, scanDistances)));
 			    for (unsigned int i = 0; i < generatedPoses.size(); i++) {
-					ISPose2D generatedPose = generatedPoses.at(i);
-					
-					//Estimate how the previous readings would look like in generated position and compare it to current readings
-					//vector<ISPoint> transformedPoints = transformPoints(predictedPose, generatedPose, cartesianReadings);
+					ISGridPose2D generatedPose = generatedPoses.at(i);
 					
 					
-					vector<ISPoint> transformedPoints = transformPoints(iRobotPose, generatedPose, iPreviousLaserReadings);
-					vector<double> transformedDistances = getDistances(transformedPoints);
-						double difference = sumDifferences(transformedDistances, scanDistances);
+					//vector<ISGridPoint> transformedPoints = transformGridPoints(iPreviousRobotPose, generatedPose, iPreviousLaserData);
+					vector<ISGridPoint> transformedPoints = transformGridPoints(predictedPose, generatedPose, euclideanLaserData);
+					int difference = sumGridDifferences(transformedPoints, euclideanLaserData, false);
+					int poseDeviation = getPoseDifference(generatedPose, predictedPose);
 					
+					if (poseDeviation == 0) {
+						if (!iPauseOn) dPrint(1,"Detected Predicted Pose (%d,%d,%f), diff  %d (pose diff %d)",generatedPose.x, generatedPose.y, generatedPose.angle, difference, poseDeviation);
+					}
+						
 					
+					//if (!iPauseOn) dPrint(1,"Pose (%d,%d,%f), diff  %d (pose diff %d)",generatedPose.x, generatedPose.y, generatedPose.angle, difference, poseDeviation);
 					
-					//double difference = abs(iterativeCrossCorrelation(transformedDistances, scanDistances));
-					//double difference = abs(crossCorrelation(transformedDistances, scanDistances, -1)+crossCorrelation(transformedDistances, scanDistances, 0)+crossCorrelation(transformedDistances, scanDistances, 1));
-					//if (!iPauseOn) dPrint(1,"Position (%f,%f,%f), diff  %.10f",generatedPose.x, generatedPose.y, generatedPose.angle, difference);
-					if (difference < minDifference) {
+					//Choose pose with smallest scans error and also the pose closest to the predicted one
+					if ((difference < minDifference) || (difference == minDifference && poseDeviation < minPoseDeviation)) {
 						index = i;
 						minDifference = difference;
+						minPoseDeviation = poseDeviation;
 					}
 				}
+				
+				
+				//Correct current pose
+				ISGridPose2D correctedPose = predictedPose; 
+				if (index >= 0 && index < (int)generatedPoses.size()) {
+					correctedPose = generatedPoses.at(index);
 					
-				/*
-				ISPoint offset;
-				offset = minValues(cartesianReadings);
-				
-			     for (vector<ISPose2D>::iterator iterator = generatedPoses.begin(); iterator < generatedPoses.end(); iterator++) {
-					ISPose2D generatedPose = *iterator;
-					vector<ISPoint> transformedPoints = transformPoints(predictedPose, generatedPose, cartesianReadings);
-					ISPoint currentOffset = minValues(transformedPoints);
-					offset.x = min(offset.x, currentOffset.x);
-					offset.y = min(offset.y, currentOffset.y);
-			     }
-			     
-			     //Calculate correlation coefficients and select minimum
-			     float minCorrelation = FLT_MAX;
-			     int index = -1;
-				
-				ISPoint off;
-				off.x=off.y=0;
-				dPrint(1,"Real Position (%f,%f,%f) correlation  %f",predictedPose.x, predictedPose.y, predictedPose.angle, fabs(getCorrelation(cartesianReadings, cartesianReadings, off )));
-			     for (int i = 0; i < (int)generatedPoses.size(); i++) {
-					ISPose2D generatedPose = generatedPoses.at(i);
-					vector<ISPoint> transformedPoints = transformPoints(predictedPose, generatedPose, cartesianReadings);
-					float correlation = fabs(getCorrelation(cartesianReadings, transformedPoints, offset));
-					dPrint(1,"Position (%f,%f,%f), correlation  %f",generatedPose.x, generatedPose.y, generatedPose.angle, correlation);
-					if (correlation < minCorrelation) {
-						index = i;
-						minCorrelation = correlation;
+					if (!iPauseOn) dPrint(1,"Best pose [%d,%d,%f] Diff: %d, Dev: %d", correctedPose.x,correctedPose.y,correctedPose.angle, minDifference, minPoseDeviation);
+					
+					//Only if not rotating too much
+					if (fabs(poseDifference.angle) < 0.001) {
+						 updateMap(correctedPose, euclideanLaserData);
 					}
-			     }
-				  
-				  */
-				  
-				  //Correct current pose
-				 ISPose2D correctedPose = predictedPose; 
-				 if (index >= 0 && index < (int)generatedPoses.size()) {
-					 correctedPose = generatedPoses.at(index);
-					 if (!iPauseOn) dPrint(1,"Best pose [%f,%f,%f] (Odometry [%f,%f,%f])", correctedPose.x,correctedPose.y,correctedPose.angle, iOdometryPose.x,iOdometryPose.y,iOdometryPose.angle);
-					 
-					 
-					vector<ISPoint> transformedPoints = transformPoints(iRobotPose, correctedPose, iPreviousLaserReadings);
-					for (unsigned int j= 0; j < transformedPoints.size(); j++) {
-						ISPoint orig = cartesianReadings.at(j);
-						ISPoint est = transformedPoints.at(j);
-						if (!iPauseOn) dPrint(1, "(%f, %f)  <--> (%f, %f)", orig.x, orig.y, est.x, est.y );
-					}
-				 }
-				 
-				 iPreviousRobotPose = iRobotPose;
-				 iPreviousLaserReadings = cartesianReadings;
-				 
-				 iRobotPose = correctedPose;
-				
-				//iRobotPose = predictedPose;
-				//iRobotPose = iOdometryPose;
-				
-				 
-				 //if (!iPauseOn) dPrint(1, "dx: %f; dy: %f; da: %f", iRobotPose.x-iOdometryPose.x, iRobotPose.y-iOdometryPose.y, iRobotPose.angle-iOdometryPose.angle);
-				  
-				  
-				  if (fabs(poseDifference.angle) < 0.001) {
-					 //Updated readings according to the newly update pose
-					 //Only if not rotating too much
-					 updateMapForPose(correctedPose);
 				}
+				
+				iRobotPose = correctedPose;
+				iPreviousLaserData = euclideanLaserData;
+				
+				  
 			 }
 		 }
 	}
 }
 
-void CJ2B2Demo::updateMapForPose(ISPose2D pose)
+void CJ2B2Demo::updateMap(ISGridPose2D pose, vector<ISGridPoint> scans)
 {
-	//Read laser data
-	vector<ISPoint> readings;
-	
-	for(EACH_IN_i(iLastLaserDistanceArray)) {
-		readings.push_back(laserToWorld(i->distance, i->angle, pose, iLaserPosition.x));
-	}
-	//readings = filterPoints(readings);
-	
-	if (iUsePointMap) {
-		iRobotPointMap.insert(iRobotPointMap.end(), readings.begin(), readings.end());
-	}
-	else {
-		
-		for (vector<ISPoint>::iterator iterator = readings.begin(); iterator < readings.end(); iterator++) {
-			ISPoint point = *iterator;
-			int x,y;
-			pointToMap(point, &x, &y);
-			if (x >= 0 && y >= 0) {
-				iRobotGridMap[y][x]=1;
-			}
+	for (vector<ISGridPoint>::iterator iterator = scans.begin(); iterator < scans.end(); iterator++) {
+		ISGridPoint point = *iterator;
+		ISGridPoint worldPoint = robotToWorld(pose, point);
+		if (!setContainsPoint(iGridMap, worldPoint)) {
+			iGridMap.push_back(worldPoint);
 		}
-	}
-}
-
-void CJ2B2Demo::pointToMap(ISPoint point, int *x, int *y)
-{
-	float x_res = MAP_WIDTH/MAP_COLS;
-	float y_res = MAP_HEIGHT/MAP_ROWS;
-	int x_index = round(point.x/x_res/2) + MAP_COLS/2;
-	int y_index = round(point.y/y_res/2) + MAP_ROWS/2;
-	
-	//if (!iPauseOn) dPrint(1,"%f,%f -> %d,%d", point.x, point.y, x_index, y_index);
-	
-	if (x_index >= 0 && x_index < MAP_COLS && y_index >= 0 && y_index < MAP_ROWS) { 
-		*x = x_index;
-		*y = y_index;
-	}
-	else {
-		*x = -1;
-		*y = -1;
 	}
 }
 	
@@ -394,10 +294,8 @@ CJ2B2Demo::CJ2B2Demo(CJ2B2Client &aInterface)
     iPreviousRobotPose(),
     iOdometryPose(),
     iPreviousOdometryPose(),
-    iRobotGridMap(),
-    iRobotPointMap(),
-    iPreviousLaserReadings(),
-    iUsePointMap(true),
+    iGridMap(),
+    iPreviousLaserData(),
     iPauseOn(true)
 {
 }
@@ -930,7 +828,7 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
     
     
     // Draw the Map
-    //if (iRobotMap.size() > 0) {
+    if (iGridMap.size() > 0) {
 		
 		SDL_Rect rect;
 		rect.x = screen->w- 450;
@@ -940,82 +838,34 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 		
 		SDL_FillRect(screen , &rect , SDL_MapRGB(screen->format , 255 , 255 , 255 ) );
       
-		if (iUsePointMap) {
-			for (vector<ISPoint>::iterator iterator = iRobotPointMap.begin(); iterator < iRobotPointMap.end(); iterator++) {
-				ISPoint point = *iterator;
-				filledCircleRGBA(screen, rect.x+rect.w/2+point.x*50, rect.y+rect.h/2+point.y*50, (int)1, 0, 0, 255, 255);
-			}
-	    
-		    float robot_x = rect.x+rect.w/2+iOdometryPose.x*50;
-		    float robot_y = rect.y+rect.h/2+iOdometryPose.y*50;
-			float pointer_end_x = robot_x + 10*cos(iOdometryPose.angle);
-			float pointer_end_y = robot_y - 10*sin(iOdometryPose.angle);
-			filledCircleRGBA(screen, robot_x, robot_y, (int)10, 0, 255, 0, 255);
-			lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 0, 0, 0, 255);
-		     
-		    robot_x = rect.x+rect.w/2+iPreviousOdometryPose.x*50;
-		    robot_y = rect.y+rect.h/2+iPreviousOdometryPose.y*50;
-			pointer_end_x = robot_x + 10*cos(iPreviousOdometryPose.angle);
-			pointer_end_y = robot_y - 10*sin(iPreviousOdometryPose.angle);
-			circleRGBA(screen, robot_x, robot_y, (int)10, 0, 0, 0, 255);
-			lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 0, 0, 0, 255);
-			
-		    robot_x = rect.x+rect.w/2+iPreviousRobotPose.x*50;
-		    robot_y = rect.y+rect.h/2+iPreviousRobotPose.y*50;
-			pointer_end_x = robot_x + 10*cos(iPreviousRobotPose.angle);
-			pointer_end_y = robot_y - 10*sin(iPreviousRobotPose.angle);
-			circleRGBA(screen, robot_x, robot_y, (int)10, 255, 0, 255, 255);
-			lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 255, 0, 255, 255);
-			
-		    robot_x = rect.x+rect.w/2+iRobotPose.x*50;
-		    robot_y = rect.y+rect.h/2+iRobotPose.y*50;
-			pointer_end_x = robot_x + 10*cos(iRobotPose.angle);
-			pointer_end_y = robot_y - 10*sin(iRobotPose.angle);
-			circleRGBA(screen, robot_x, robot_y, (int)10, 255, 0, 0, 255);
-			lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 255, 0, 0, 255);
-		}
-		else {
-			float x_res = MAP_WIDTH/MAP_COLS;
-			float y_res = MAP_HEIGHT/MAP_ROWS;
-			
-			float x_w = x_res*rect.w/MAP_WIDTH;
-			float y_h = y_res*rect.h/MAP_HEIGHT;
-	      
-		     for (int i = 0; i < MAP_ROWS; i++) {
-				 for (int j = 0; j < MAP_COLS; j++) {
-					 if (iRobotGridMap[i][j] == 1) {
-						SDL_Rect pointRect;
-						pointRect.x = rect.x+j*x_w;
-						pointRect.y = rect.y+i*y_h;
-						pointRect.w = x_w;
-						pointRect.h = y_h;
-						SDL_FillRect(screen, &pointRect, SDL_MapRGB(screen->format, 0, 0, 255));
-					}
-				}
-			}
-			
-			ISPoint robotPoint;
-			robotPoint.x = iRobotPose.x;
-			robotPoint.y = iRobotPose.y;
-			int x,y;
-			pointToMap(robotPoint,&x,&y);
-			if (x >= 0 && y >= 0) {
-				SDL_Rect pointRect;
-				pointRect.x = rect.x+(x-0.5)*x_w;
-				pointRect.y = rect.y+(y-0.5)*y_h;
-				pointRect.w = x_w*2;
-				pointRect.h = y_h*2;
-				// dPrint(1,"%d,%d is obstacle (%d,%d,%d,%d)", i,j,pointRect.x,pointRect.y,pointRect.w,pointRect.h);
-				SDL_FillRect(screen, &pointRect, SDL_MapRGB(screen->format, 0, 255,0));
+		float x_w = X_RES*rect.w/MAP_WIDTH;
+		float y_h = Y_RES*rect.h/MAP_HEIGHT;
 		
-				//Draw pointer
-			    float robot_x = pointRect.x + x_w*0.75;
-			    float robot_y = pointRect.y + y_h*0.75;
-				float pointer_end_x = robot_x + x_w*cos(iOdometryPose.angle);
-				float pointer_end_y = robot_y - y_h*sin(iOdometryPose.angle);
-				lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 255, 0, 0, 255);
-			}
-	    }
+		for (vector<ISGridPoint>::iterator iterator = iGridMap.begin(); iterator < iGridMap.end(); iterator++) {
+			ISGridPoint point = *iterator;
+			SDL_Rect pointRect;
+			pointRect.x = rect.x+point.x*x_w;
+			pointRect.y = rect.y+point.y*y_h;
+			pointRect.w = x_w;
+			pointRect.h = y_h;
+			SDL_FillRect(screen, &pointRect, SDL_MapRGB(screen->format, 0, 0, 255));
+		}
+		
+		SDL_Rect pointRect;
+		pointRect.x = rect.x+(iRobotPose.x-0.5)*x_w;
+		pointRect.y = rect.y+(iRobotPose.x-0.5)*y_h;
+		pointRect.w = x_w*2;
+		pointRect.h = y_h*2;
+		// dPrint(1,"%d,%d is obstacle (%d,%d,%d,%d)", i,j,pointRect.x,pointRect.y,pointRect.w,pointRect.h);
+		SDL_FillRect(screen, &pointRect, SDL_MapRGB(screen->format, 0, 255,0));
+
+		//Draw pointer
+	    float robot_x = pointRect.x + x_w*0.75;
+	    float robot_y = pointRect.y + y_h*0.75;
+		float pointer_end_x = robot_x + x_w*cos(iOdometryPose.angle);
+		float pointer_end_y = robot_y - y_h*sin(iOdometryPose.angle);
+		lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 255, 0, 0, 255);
+	}
     
     // Print help
 #define HELPSTRCOUNT 7
