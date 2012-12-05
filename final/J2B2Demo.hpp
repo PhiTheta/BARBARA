@@ -13,10 +13,10 @@
 
 #define MAP_WIDTH		4.5
 #define MAP_HEIGHT		3.7
-#define MAP_ROWS		(37*10)
-#define MAP_COLS		(45*10)
-#define X_RES			MAP_WIDTH/MAP_COLS
-#define Y_RES			MAP_HEIGHT/MAP_ROWS
+#define MAP_ROWS		(37*3)
+#define MAP_COLS		(45*3)
+#define X_RES			(MAP_WIDTH/MAP_COLS)
+#define Y_RES			(MAP_HEIGHT/MAP_ROWS)
 
 class CJ2B2Demo : private gim::CSync, 
                   private gim::CThread
@@ -86,6 +86,7 @@ private:
   vector<ISGridPoint> iGridMap;
   vector<ISGridPoint> iPreviousLaserData;
   volatile bool iPauseOn;
+  int iIter;
   void updateMap(ISGridPose2D pose, vector<ISGridPoint> scans);
   void runSLAM();
   ISGridPose2D gridPoseFromTPose(const MaCI::Position::TPose2D *pose);

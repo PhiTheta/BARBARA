@@ -91,15 +91,17 @@ inline float truncate(float val)
 ISGridPose2D CJ2B2Demo::gridPoseFromTPose(const MaCI::Position::TPose2D *pose)
 {
 	ISGridPose2D res;
-	double xind = pose->x;
-	double yind = pose->y;
-	xind /= (X_RES*2);
-	yind /= (Y_RES*2);
-	res.x = round(xind);
-	res.y = round(yind);
+	//double xind = pose->x;
+	//double yind = pose->y;
+	//xind /= (X_RES*2);
+	//yind /= (Y_RES*2);
+	//res.x = round(xind);
+	//res.y = round(yind);
+	res.x = pose->x;
+	res.y = pose->y;
 	res.angle = (double)pose->a;
 	
-	if (!iPauseOn) dPrint(1,"%f,%f -> %f,%f -> %d,%d [%f,%f]", pose->x, pose->y, xind, yind, res.x, res.y, X_RES, Y_RES);
+	//if (!iPauseOn) dPrint(1,"%f,%f -> %f,%f -> %d,%d [%f,%f]", pose->x, pose->y, xind, yind, res.x, res.y, X_RES, Y_RES);
 	
 	return res;
 }
@@ -118,7 +120,7 @@ vector<ISGridPoint> CJ2B2Demo::getEuclideanLaserData()
 }
 
 void CJ2B2Demo::runSLAM()
-{
+{	
 	using namespace MaCI::Position;
 	using namespace MaCI;
 	
@@ -151,26 +153,33 @@ void CJ2B2Demo::runSLAM()
 			const TPose2D *pose1 = pd.GetPose2D();	
 			ISGridPose2D previousPose = gridPoseFromTPose(pose1);
 			
+	//iIter++;
+	//if (iIter < 10) {
+		//return;
+	//}
+	//iIter = 0;
 			if (iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, iLastLaserTimestamp.GetGimTime())) {
+				
+				
 				const TPose2D *pose2 = pd.GetPose2D();
 				
 				if (!iPauseOn) dPrint(1,"Previous time %f Current time %f", iLastOdometryTimestamp.GetGimTime().getTimeInSeconds(), iLastLaserTimestamp.GetGimTime().getTimeInSeconds());
 				
 				iPreviousOdometryPose = previousPose;
-				iLastOdometryTimestamp = iLastLaserTimestamp;
 				iOdometryPose = gridPoseFromTPose(pose2);
 				iPreviousRobotPose = iRobotPose;
 				
-				int dx = round((pose2->x-pose1->x)/X_RES/2);
-				int dy = round((pose2->y-pose1->y)/Y_RES/2);
-		
 				if (!iPauseOn) dPrint(1, "Previous odometry %d,%d,%f; Current odometry %d,%d,%f", iPreviousOdometryPose.x,iPreviousOdometryPose.y,iPreviousOdometryPose.angle, iOdometryPose.x,iOdometryPose.y,iOdometryPose.angle);
 			
 			
 				ISGridPose2D poseDifference;
-				poseDifference.x = dx;
-				poseDifference.y = dy;
+				poseDifference.x = iOdometryPose.x-iPreviousOdometryPose.x;
+				poseDifference.y = iOdometryPose.y-iPreviousOdometryPose.y;
 				poseDifference.angle = iOdometryPose.angle-iPreviousOdometryPose.angle;
+				
+				if ((poseDifference.x != 0 && poseDifference.y != 0) || poseDifference.angle > 0.01) {
+					iLastOdometryTimestamp = iLastLaserTimestamp;
+				}
 				
 				if (!iPauseOn) dPrint(1, "Difference %d,%d,%f", poseDifference.x,poseDifference.y,poseDifference.angle);
 		
@@ -224,7 +233,7 @@ void CJ2B2Demo::runSLAM()
 					}
 						
 					
-					//if (!iPauseOn) dPrint(1,"Pose (%d,%d,%f), diff  %d (pose diff %d)",generatedPose.x, generatedPose.y, generatedPose.angle, difference, poseDeviation);
+					//if (!iPauseOn) dPrint(1,"Pose (%d,%d,%f), diff  %d (pose d./J2B2-UI-example localhost 40022 FSRSim.J2B2iff %d)",generatedPose.x, generatedPose.y, generatedPose.angle, difference, poseDeviation);
 					
 					//Choose pose with smallest scans error and also the pose closest to the predicted one
 					if ((difference < minDifference) || (difference == minDifference && poseDeviation < minPoseDeviation)) {
@@ -296,7 +305,8 @@ CJ2B2Demo::CJ2B2Demo(CJ2B2Client &aInterface)
     iPreviousOdometryPose(),
     iGridMap(),
     iPreviousLaserData(),
-    iPauseOn(true)
+    iPauseOn(true),
+    iIter(0)
 {
 }
 //*****************************************************************************
@@ -380,7 +390,7 @@ int CJ2B2Demo::RunInfoDemo(int aIterations)
   }
 
 /*
-  // This prints Odometry output every 5 seconds.
+  // This prints Odometry out./J2B2-UI-example localhost 40022 FSRSim.J2B2put every 5 seconds.
   if (iInterface.iPositionOdometry) {
     while(iDemoActive && 
           iInfoThreadActive && 
@@ -435,7 +445,7 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
       dPrint(ODTEST,"Succesfully Open():ed SerialLink connection");
 
     } else {
-      dPrint(ODTEST,"SerialLink connection not available.");
+      dPrint(ODTEST,"SerialLi./J2B2-UI-example localhost 40022 FSRSim.J2B2nk connection not available.");
       delete slc;
       slc = NULL;
 
@@ -497,7 +507,7 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
         // QUIT ('Window close' clicked)
       case SDL_QUIT: {
         // close button clicked
-        dPrint(1,"'Window close' clicked.");
+        dPrint(1,"'Window close' clicke./J2B2-UI-example localhost 40022 FSRSim.J2B2d.");
         iDemoActive = false;
         ownSleep_ms(1000);
         raise(SIGINT);
@@ -522,7 +532,7 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
           
           /////////////////////////////////////////////////////////////
           // Perform simple robot control (just set the current values
-          /////////////////////////////////////////////////////////////
+          ///////////////////////////iX_RES//////////////////////////////////
         case SDLK_UP:
           // 'w' pressed - set speed to 'forward 0.3m/s'
           r_speed = 0.30;
@@ -582,7 +592,6 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
           } else {
             dPrint(1,"Executing MotionDemo..");
             CThread::RunThread(KThreadMotionDemo);
-
           }
           break;
 
@@ -651,7 +660,7 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
             // Give it a while to go through (Only for demonstration purposes!)
             ownSleep_ms(500);
 
-            // Now, Wait for Read event, maximum of 500ms more
+            // Now, Wait for Read event, ma./J2B2-UI-example localhost 40022 FSRSim.J2B2ximum of 500ms more
             if (slc->WaitToRead(500)) {
               if (slc->Read((uint8_t*)reply, sizeof(reply)) > 0) {
                 dPrint(ODTEST,"Got reply: '%s'", reply);
@@ -838,25 +847,24 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 		
 		SDL_FillRect(screen , &rect , SDL_MapRGB(screen->format , 255 , 255 , 255 ) );
       
-		float x_w = X_RES*rect.w/MAP_WIDTH;
-		float y_h = Y_RES*rect.h/MAP_HEIGHT;
+		float x_w = X_RES*rect.w/(float)MAP_WIDTH;
+		float y_h = Y_RES*rect.h/(float)MAP_HEIGHT;
 		
 		for (vector<ISGridPoint>::iterator iterator = iGridMap.begin(); iterator < iGridMap.end(); iterator++) {
 			ISGridPoint point = *iterator;
 			SDL_Rect pointRect;
-			pointRect.x = rect.x+point.x*x_w;
-			pointRect.y = rect.y+point.y*y_h;
+			pointRect.x = (point.x-10)*x_w+rect.x;
+			pointRect.y = (-point.y-10)*y_h+rect.y+rect.h;
 			pointRect.w = x_w;
 			pointRect.h = y_h;
 			SDL_FillRect(screen, &pointRect, SDL_MapRGB(screen->format, 0, 0, 255));
 		}
 		
 		SDL_Rect pointRect;
-		pointRect.x = rect.x+(iRobotPose.x-0.5)*x_w;
-		pointRect.y = rect.y+(iRobotPose.x-0.5)*y_h;
+		pointRect.x = (iRobotPose.x/X_RES-10)*x_w+rect.x;
+		pointRect.y = (-iRobotPose.y/Y_RES-10)*y_h+rect.y+rect.h;
 		pointRect.w = x_w*2;
 		pointRect.h = y_h*2;
-		// dPrint(1,"%d,%d is obstacle (%d,%d,%d,%d)", i,j,pointRect.x,pointRect.y,pointRect.w,pointRect.h);
 		SDL_FillRect(screen, &pointRect, SDL_MapRGB(screen->format, 0, 255,0));
 
 		//Draw pointer

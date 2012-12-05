@@ -8,7 +8,7 @@
 bool gridPoseEqualsToGridPose(ISGridPose2D firstPose, ISGridPose2D secondPose)
 {
 	bool res = false;
-	if (firstPose.x == secondPose.x && firstPose.y == secondPose.y && fabs(firstPose.angle-secondPose.angle) < 0.0001) {
+	if (fabs(firstPose.x-secondPose.x) < 0.0001 && fabs(firstPose.y-secondPose.y) < 0.0001 && fabs(firstPose.angle-secondPose.angle) < 0.0001) {
 		res = true;
 	}
 	return res;
@@ -152,8 +152,8 @@ int sumGridDifferences(vector<ISGridPoint> firstSet, vector<ISGridPoint> secondS
 ISGridPoint laserToWorld(double distance, double angle, ISGridPose2D currentPose, float laser_to_robot, float x_res, float y_res)
 {
 	//Laser origin coordinates
-	double x = distance*cos(angle+currentPose.angle);
-	double y = distance*sin(angle+currentPose.angle);
+	float x = distance*cos(angle-currentPose.angle);
+	float y = distance*sin(angle-currentPose.angle);
 	
 	//Robot origin coordinates
 	x += laser_to_robot*cos(currentPose.angle);
@@ -171,8 +171,8 @@ ISGridPoint laserToWorld(double distance, double angle, ISGridPose2D currentPose
 ISGridPoint robotToWorld(ISGridPose2D pose, ISGridPoint point)
 {
 	ISGridPoint newPoint;
-	newPoint.x = round(point.x*cos(-pose.angle)-point.y*sin(-pose.angle))+pose.x;
-	newPoint.y = round(point.x*sin(-pose.angle)+point.y*cos(-pose.angle))+pose.y;
+	newPoint.x = round(point.x*cos(-pose.angle)-point.y*sin(-pose.angle)+pose.x);
+	newPoint.y = round(point.x*sin(-pose.angle)+point.y*cos(-pose.angle)+pose.y);
 	return newPoint;
 }
 
