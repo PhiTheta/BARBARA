@@ -94,10 +94,13 @@ float real_w = 4.5;
 float real_h = 3.7;
 bool has_plan = false;
 unsigned int step = 0;
+float AngleRad = M_PI/2;
 
 vector<node> path;
 
 vector<pose2D> smooth_astar_path,original;
+
+
 int iMap[] = {	  
     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
     0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
@@ -108,11 +111,11 @@ int iMap[] = {
     0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,
     0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,
     0,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
@@ -120,17 +123,17 @@ int iMap[] = {
     0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
     0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
@@ -149,7 +152,7 @@ inline float truncate(float val)
 	return val;
 }
 
-void smoothX(vector<node> &astar_path, float weight_data, float weight_smooth, float tolerance){
+void smooth(vector<node> &astar_path, float weight_data, float weight_smooth, float tolerance){
 	
 	//Make a Copy of X and Y
 	original.clear();
@@ -194,80 +197,25 @@ void smoothX(vector<node> &astar_path, float weight_data, float weight_smooth, f
 	
 }
 
-void smoothY(vector<node> &astar_path, float weight_data, float weight_smooth, float tolerance){
-	
-	original.clear();
-	smooth_astar_path.clear();
-	unsigned int i;node copy_path;
-	pose2D copy_smooth_path;
-	for(i=0;i<astar_path.size();i++){
-		copy_path = astar_path.at(i);
-		copy_smooth_path.x = (float)copy_path.x;
-		copy_smooth_path.y = (float)copy_path.y;
-		original.push_back(copy_smooth_path);
-		smooth_astar_path.push_back(copy_smooth_path);
-	}
-	
-	float change = tolerance;
-	pose2D aux_i, new_point, aux_i1, aux_i2, initial_XY;
-	
-		
-	while(change >= tolerance){
-		change = 0.0;					
-		for(i=1;i<=smooth_astar_path.size()-2;i++){
-			
-			aux_i = smooth_astar_path.at(i);
-			new_point = smooth_astar_path.at(i);
-			initial_XY = original.at(i);
-			aux_i1 = smooth_astar_path.at(i-1);
-			aux_i2 = smooth_astar_path.at(i+1);
-			
-			new_point.y += weight_data * (initial_XY.y - new_point.y);
-			new_point.y += weight_smooth * ( ( aux_i1.y + aux_i2.y) - ( 2.0 * new_point.y) );
-			change += fabs(aux_i.y - new_point.y);
-			smooth_astar_path.at(i) = new_point;
-		}
-		dPrint(1,"ToleranceY: %f", change);
-	}
+void open_manipulator(){
+	  using namespace MaCI::JointGroupCtrl;
+	  using namespace MaCI;
+	  AngleRad = M_PI/2;	
+	  bool r;
+	  // Command Servo to move. (Move servos attached to Camera PTU)
+      //r = iInterface.iServoCtrl->SetPosition(AngleRad, KServoUserServo_0);
+      
 }
 
-//void smooth(vector<node> &astar_path, float weight_data, float weight_smooth, float tolerance){
-
-	////vector<node> smooth_astar_path = astar_path;
-	//smooth_astar_path = astar_path;
-	//int i,m;
-	//float aux;
-	//float change = tolerance;
-	//m=smooth_astar_path.size();
-	////bool test_flag = false;
-
-	//while(change >= tolerance){
-		//change = 0.0;
-		////if(!test_flag){
-		//for(i=1;i<=2;i++){
-			
-			//node aux_i = smooth_astar_path.at(i);
-			//node new_point = smooth_astar_path.at(i);
-			//node aux_i1 = smooth_astar_path.at(i-1);
-			//node aux_i2 = smooth_astar_path.at(i+1);
-		    //node original = astar_path.at(i); 	
-			
-						
-			//new_point.y += weight_data * (original.y - new_point.y);
-			
-			//new_point.y += weight_smooth * ( ( aux_i1.y + aux_i2.y) - ( 2.0 * new_point.y) );
-			//change += fabs(aux_i.y - new_point.y);
-			
-			
-			
-			//new_point.x += weight_data * (original.x - new_point.x);
-			
-			//new_point.x += weight_smooth * ( ( aux_i1.x + aux_i2.x) - ( 2.0 * new_point.x) );
-			//change += fabs(aux_i.x - new_point.x);
-		//}
-
-	//}
-//}
+void close_manipulator(){
+	  using namespace MaCI::JointGroupCtrl;
+	  using namespace MaCI;
+	  AngleRad = 0;	
+	  bool r;
+	  // Command Servo to move. (Move servos attached to Camera PTU)
+      //r = iInterface.iServoCtrl->SetPosition(AngleRad, KServoUserServo_0);
+      
+}
 
 //void smooth_test(float (&a_star_path)[18][2], float weight_data, float weight_smooth, float tolerance){
 
@@ -1081,8 +1029,8 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
   
 	//float x_next[NUM_WAYPOINTS] = {3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.6, 3.6, 3.6, 3.6, 3.6, 3.6, 3.6};
 	//float y_next[NUM_WAYPOINTS] = {2.7, 2.7, 2.7, 2.7, 2.7, 2.7, 2.6, 2.5, 2.4, 2.3, 2.2, 2.1, 2.0};
-	float x_next[NUM_WAYPOINTS] = {3.6, 3.3, 2.7, 1.6, 1.6, 1.5,   1.0, 0.5, 0.9, 1.6, 2.4,  3};
-	float y_next[NUM_WAYPOINTS] = {1.5, 0.5, 1.5, 0.6, 1.5, 1.5, 0.65, 0.65, 0.65, 2.4, 2.4, 2.4, 2.7, 2.7};
+	float x_next[NUM_WAYPOINTS] = {3.3, 3.6, 3.6, 2.4, 1.0, 1.5,   1.0, 0.5, 0.9, 1.6, 2.4,  3};
+	float y_next[NUM_WAYPOINTS] = {2.4, 1.5, 0.5, 1.6, 0.6, 1.5, 0.65, 0.65, 0.65, 2.4, 2.4, 2.4, 2.7, 2.7};
 	//float x_next[NUM_WAYPOINTS] = {3.6, 2.7, 2.7, 1.6,  1.0,  1.0, };
 	//float y_next[NUM_WAYPOINTS] = {2.1, 1.5, 0.65, 0.65, 0.65, 2.4, };
 	
@@ -1106,12 +1054,15 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
   bool check_flag = false, motion_flag = false; // for debugging
   
   //Control Loop from Lecture Slides
-  float rho=1, alpha, beta, A,B;
+  float rho=0, previous_rho, error_rho, alpha, beta, A,B;
   float dx=0.1, dy=0.1;
-  float K_rho= 0.15, K_alpha=0.7, K_beta=-0.05, K1 =1, K2 =3;
+  float K_rho= 0.15, K_alpha=0.05, K_beta=-0.05, K_P = 0.01, K_D = 4 ;
+
   //float K_rho= 0.3, K_alpha=0.7, K_beta=-0.15;
   //float K_rho= 1, K_alpha=2.66, K_beta=(-0.5);
   //int step = 0;
+  
+  
   
   if (iMotionThreadActive) {
     dPrint(1,"MotionDemo already active! Will not start again.");
@@ -1128,265 +1079,249 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 	int iterations = 0;
 	while(iDemoActive && iMotionThreadActive && (aIterations == -1 || iterations < aIterations)) {
     
-		//if(!has_plan){
-			
-			//smooth_test(test_path,WEIGHT_DATA,WEIGHT_SMOOTH,A_TOLERANCE);
-			//int i,j;
-			//for(i=0;i<=17;i++){
-					//for(j=0;j<=1;j++){
-						
-						//if(j==0){
-							//dPrint(1,"x_test: %f, x_new: %f",test_path[i][j],new_test[i][j]);
-						//}
-						//if(j==1){
-							//dPrint(1,"y_test: %f, y_new: %f",test_path[i][j],new_test[i][j]);
-						//}
-					//}
-				
-			//}
-			//dPrint(1,"Smoothing Done")
-		//has_plan=true;
-		//}
-		
+		//Manipulator Test
+		iInterface.iServoCtrl->SetPosition(AngleRad, KServoUserServo_0);
+		open_manipulator();
+		close_manipulator();
+	
 		// Got MotionCtrl?
-		if (iInterface.iMotionCtrl) {
+		//if (iInterface.iMotionCtrl) {
 			
             
             
-            ////////////////IVAN'S MID TERM CODE//////////////////////////////////////////////
+            //////////////////IVAN'S MID TERM CODE//////////////////////////////////////////////
             
-            //Run A*
+            ////Run A*
             
-			if (!has_plan) {
+			//if (!has_plan) {
 				
-				MaCI::Position::CPositionData pd;
-				iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000);
-				const TPose2D *pose = pd.GetPose2D();
+				//MaCI::Position::CPositionData pd;
+				//iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000);
+				//const TPose2D *pose = pd.GetPose2D();
 				
-				iPose.x = (pose->x/4.5*w)+0.5;
-				iPose.y = (pose->y/3.7*h)+0.5;
-				dPrint(1,"Present X: %f, Present Y: %f", iPose.x, iPose.y );
+				//iPose.x = (pose->x/4.5*w)+0.5;
+				//iPose.y = (pose->y/3.7*h)+0.5;
+				//dPrint(1,"Present X: %f, Present Y: %f", iPose.x, iPose.y );
 
-				iPose.theta = 0;
+				//iPose.theta = 0;
 			
-				wayPoint.x = (x_next[wayPnumber]/4.5*w+0.5);
-				wayPoint.y = (y_next[wayPnumber]/3.7*h+0.5);
-				//wayPoint.theta = 270;	
-				pathplan2 plan;
-				path = plan.get_graph(iMap,w,h,iPose.x,iPose.y,wayPoint.x,wayPoint.y);
-
-				//smoothY(path,WEIGHT_DATA,WEIGHT_SMOOTH,A_TOLERANCE);
-				smoothX(path,WEIGHT_DATA,WEIGHT_SMOOTH,A_TOLERANCE);
-				
-				for(unsigned int i = 0; i < path.size(); i++) {
-					node aaa = path.at(i);
-					pose2D bbb = smooth_astar_path.at(i);
-					//dPrint(1, "x: %d y: %d F: %f G: %f H: %f parentx: %d parenty: %d", aaa.x, aaa.y,  aaa.F, aaa.G, aaa.H, aaa.px, aaa.py);
-					dPrint(1,"x: %d , newX: %f , y: %d , newy: %f", aaa.x, bbb.x, aaa.y, bbb.y);
-				}
-				
-				has_plan = true;
-				step =0;
-			}
-
+				//wayPoint.x = (x_next[wayPnumber]/4.5*w+0.5);
+				//wayPoint.y = (y_next[wayPnumber]/3.7*h+0.5);
+				////wayPoint.theta = 270;	
+				//pathplan2 plan;
+				//path = plan.get_graph(iMap,w,h,iPose.x,iPose.y,wayPoint.x,wayPoint.y);
 
 			
-			if (iInterface.iPositionOdometry) {
+				//smooth(path,WEIGHT_DATA,WEIGHT_SMOOTH,A_TOLERANCE);
+				
+				//for(unsigned int i = 0; i < path.size(); i++) {
+					//node aaa = path.at(i);
+					//pose2D bbb = smooth_astar_path.at(i);
+					////dPrint(1, "x: %d y: %d F: %f G: %f H: %f parentx: %d parenty: %d", aaa.x, aaa.y,  aaa.F, aaa.G, aaa.H, aaa.px, aaa.py);
+					//dPrint(1,"x: %d , newX: %f , y: %d , newy: %f", aaa.x, bbb.x, aaa.y, bbb.y);
+				//}
+				
+				//has_plan = true;
+				//step =0;
+			//}
+
+
+			
+			//if (iInterface.iPositionOdometry) {
                 
-				//if (step < NUM_WAYPOINTS) {
-                if ( (step+1) < path.size()) {
+				////if (step < NUM_WAYPOINTS) {
+                //if ( (step+1) < path.size()) {
 					    
-					MaCI::Position::CPositionData pd;
-					iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000);
-					const TPose2D *pose = pd.GetPose2D();
+					//MaCI::Position::CPositionData pd;
+					//iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000);
+					//const TPose2D *pose = pd.GetPose2D();
 
                      
-                    double x_present, y_present, a_present;
+                    //double x_present, y_present, a_present;
                     
-                    //This also records data into the files
-					//EKF->insertMeasurement(pose->x, pose->y, pose->a);
+                    ////This also records data into the files
+					////EKF->insertMeasurement(pose->x, pose->y, pose->a);
                     
                     
-					/*
-                    EKF->readEstimates(&x_present, &y_present, &a_present, &v, &w);
-                    //*/
-                    //*
-					x_present = pose->x;
-					y_present = pose->y;
-					a_present = pose->a;
-					//*/
-					//*
+					///*
+                    //EKF->readEstimates(&x_present, &y_present, &a_present, &v, &w);
+                    ////*/
+                    ////*
+					//x_present = pose->x;
+					//y_present = pose->y;
+					//a_present = pose->a;
+					////*/
+					////*
+				
+					//node present = path.at(step);
+					//Ax_next_stop_meters = (present.x * 4.5)/w;
+					//Ay_next_stop_meters = (present.y * 3.7)/h;				
 					
-					//smooth_path = smoothX(path,WEIGHT_DATA,WEIGHT_SMOOTH,A_TOLERANCE);
-					//smooth_path = smoothY(path,WEIGHT_DATA,WEIGHT_SMOOTH,A_TOLERANCE);
+					//pose2D next_stop = smooth_astar_path.at(step+1);
 					
+					////dPrint(1,"next_stop.x: %d, next_stop.y: %d", next_stop.x,next_stop.y);
 					
-					node present = path.at(step);
-					Ax_next_stop_meters = (present.x * 4.5)/w;
-					Ay_next_stop_meters = (present.y * 3.7)/h;				
-					
-					pose2D next_stop = smooth_astar_path.at(step+1);
-					
-					//dPrint(1,"next_stop.x: %d, next_stop.y: %d", next_stop.x,next_stop.y);
-					
-					x_next_stop_meters = (next_stop.x * 4.5)/w;
-					y_next_stop_meters = (next_stop.y * 3.7)/h;
+					//x_next_stop_meters = (next_stop.x * 4.5)/w;
+					//y_next_stop_meters = (next_stop.y * 3.7)/h;
 					
 					
-					dPrint(1,"\n\n\n\n");
-					if (motionState == StateIdle) { dPrint(1,"State: Idle");}
-					else if (motionState == StateDriving) { dPrint(1,"State: Driving");}
-					else if (motionState == StateTurning) { dPrint(1,"State: Turning");}
-					//dPrint(1,"x: %.2f->%.2f", x_present, x_next[step]);
-					//dPrint(1,"x: %.2f->%.2f", x_present, x_next[step]);
-					//dPrint(1,"y: %.2f->%.2f", y_present, y_next[step]);
-					dPrint(1,"x: %.2f->%.2f", x_present, x_next_stop_meters);
-					dPrint(1,"y: %.2f->%.2f", y_present, y_next_stop_meters);
-					dPrint(1,"delta: %.2f, %.2f", dx, dy);
-					dPrint(1,"rho: %f",rho);
-					dPrint(1,"alpha is: %f",alpha);
-					dPrint(1,"a_present is: %f",a_present);
-					dPrint(1,"v: %.2f; w: %.2f; a: %.2f",r_speed, r_wspeed, r_acc);
-					dPrint(1,"Step: %d", step);
-					dPrint(1,"Way Point %d",wayPnumber);
-					//*/            
+					//dPrint(1,"\n\n\n\n");
+					//if (motionState == StateIdle) { dPrint(1,"State: Idle");}
+					//else if (motionState == StateDriving) { dPrint(1,"State: Driving");}
+					//else if (motionState == StateTurning) { dPrint(1,"State: Turning");}
+					////dPrint(1,"x: %.2f->%.2f", x_present, x_next[step]);
+					////dPrint(1,"x: %.2f->%.2f", x_present, x_next[step]);
+					////dPrint(1,"y: %.2f->%.2f", y_present, y_next[step]);
+					//dPrint(1,"x: %.2f->%.2f", x_present, x_next_stop_meters);
+					//dPrint(1,"y: %.2f->%.2f", y_present, y_next_stop_meters);
+					//dPrint(1,"delta: %.2f, %.2f", dx, dy);
+					//dPrint(1,"rho: %f",rho);
+					//dPrint(1,"alpha is: %f",alpha);
+					//dPrint(1,"a_present is: %f",a_present);
+					//dPrint(1,"v: %.2f; w: %.2f; a: %.2f",r_speed, r_wspeed, r_acc);
+					//dPrint(1,"Step: %d", step);
+					//dPrint(1,"Way Point %d",wayPnumber);
+					////*/            
 										
-					//dx = (x_next[step] - x_present);
-					//dy = (y_next[step] - y_present);
-					dx = (x_next_stop_meters - x_present);
-					dy = (y_next_stop_meters - y_present);
+					////dx = (x_next[step] - x_present);
+					////dy = (y_next[step] - y_present);
+					//dx = (x_next_stop_meters - x_present);
+					//dy = (y_next_stop_meters - y_present);
 					
-					alpha = atan2(dy, dx)-a_present;
-                    alpha = truncate(alpha);
+					//alpha = atan2(dy, dx)-a_present;
+                    //alpha = truncate(alpha);
 							
 					
-					switch (motionState) {
-						case StateDriving:
-						{
-							rho = sqrt(dx*dx + dy*dy);
-							
-							if (rho <= DIST_MARGIN) {
-	                            step++; 
+					//switch (motionState) {
+						//case StateDriving:
+						//{
+							//rho = sqrt(dx*dx + dy*dy);
+							//error_rho = (rho - previous_rho)/0.2;
+							//if (rho <= DIST_MARGIN) {
+	                            //step++; 
 								//motionState = StateTurning;
-								r_speed = MIN_SPEED;
-								r_wspeed = 0;
-								r_acc=0.15;
-								iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
-	                            ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
-								continue;
-							} else {
+								//r_speed = MIN_SPEED;
+								//r_wspeed = 0;
+								//r_acc=0.15;
+								//iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
+	                            //ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+	                            ////iInterface.iMotionCtrl->SetStop();
+	                            ////ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+	                            //motionState = StateTurning;
+								//continue;
+							//} else {
 								
-								//if (carefully) {
-									////Set it for the first time
-									//if (careful_rho == 0) {
-										//careful_rho = rho-0.1;
-									//}
-									////r_wspeed = 0;
+								////if (carefully) {
+									//////Set it for the first time
+									////if (careful_rho == 0) {
+										////careful_rho = rho-0.1;
+									////}
+									//////r_wspeed = 0;
+									////r_speed = 0.05;
+				                    //////EKF->updateControl(r_speed, r_acc, r_wspeed, 0);		               
+									////iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
+									////ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+									
+									//////Switch to control algorithm
+									////if (rho < careful_rho) {
+										////carefully = false;
+									////}
+								////}
+								////else {
+									//beta = -(a_present + alpha);
+									//beta = truncate(beta);
+											
 									//r_speed = 0.05;
+									////r_speed = K_rho * rho;
+									////r_wspeed = K_alpha * alpha + K_beta * beta;
+									//r_wspeed = K_alpha * alpha;
+									////r_wspeed = K_P * rho + K_D * error_rho;
+
+									//previous_rho = rho;
+
+									
+									//if (fabs(alpha) > M_PI_2) {
+										//r_speed *= -1;
+									//}
+									
+									////r_speed *= 2;
+									////r_wspeed *= 2;
+									
+									//if( (r_speed >= 0.0) || (r_speed = -0.0) ){
+										//r_speed = MAX(MIN(r_speed, MAX_SPEED), MIN_SPEED);
+									//}else{
+										//r_speed = MIN(MAX(r_speed, -MAX_SPEED), -MIN_SPEED);	
+									//}									
+									//r_wspeed = MAX(MIN(r_wspeed, MAX_WSPEED), -MAX_WSPEED);
+									
+
+									
+									////if (fabs(r_speed) < MIN_SPEED) {
+										////r_speed = r_speed < 0 ? -MIN_SPEED : MIN_SPEED;
+									////}
+									
 				                    ////EKF->updateControl(r_speed, r_acc, r_wspeed, 0);		               
 									//iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
 									//ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
-									
-									////Switch to control algorithm
-									//if (rho < careful_rho) {
-										//carefully = false;
-									//}
-								//}
-								//else {
-									beta = -(a_present + alpha);
-									beta = truncate(beta);
-											
-									//r_speed = 0.2;
-									r_speed = K_rho * rho;
-									r_wspeed = K_alpha * alpha + K_beta * beta;
-									
-									//A = K2 * (alpha - atan(-1*K1*beta));
-									//B = ( 1 + (K1/(1 + (K1*beta)*(K1*beta))) ) * sin(alpha);
-									
-									//r_wspeed = ( -1 * r_speed * (A + B) ) / rho;
-									
-									if (fabs(alpha) > M_PI_2) {
-										r_speed *= -1;
-									}
-									
-									r_speed *= 2;
-									r_wspeed *= 2;
-									//r_speed = MAX(MIN(r_speed, MAX_SPEED), -MAX_SPEED);
-									if( (r_speed >= 0.0) || (r_speed = -0.0) ){
-										r_speed = MAX(MIN(r_speed, MAX_SPEED), MIN_SPEED);
-									}else{
-										r_speed = MIN(MAX(r_speed, -MAX_SPEED), -MIN_SPEED);	
-									}									
-									r_wspeed = MAX(MIN(r_wspeed, MAX_WSPEED), -MAX_WSPEED);
-									
-
-									
-									//if (fabs(r_speed) < MIN_SPEED) {
-										//r_speed = r_speed < 0 ? -MIN_SPEED : MIN_SPEED;
-									//}
-									
-				                    //EKF->updateControl(r_speed, r_acc, r_wspeed, 0);		               
-									iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
-									ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
-								//}
-							}	
-						}
-						break;
+								////}
+							//}	
+						//}
+						//break;
 						
 						
 						
-						case StateTurning:
-						{
-							iInterface.iMotionCtrl->SetStop();
-							ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+						//case StateTurning:
+						//{
+							//iInterface.iMotionCtrl->SetStop();
+							//ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
 								    
-						    r_speed = 0;                    
-							r_wspeed = MAGIC_CNST*alpha;
-							if( (r_wspeed >= 0.0) || (r_wspeed = -0.0) ){
-								r_wspeed = MAX(MIN(r_wspeed, MAX_WSPEED), MIN_WSPEED);
-							}else{
-								r_wspeed = MIN(MAX(r_wspeed, -MAX_WSPEED), -MIN_WSPEED);	
-							}
+						    //r_speed = 0;                    
+							//r_wspeed = MAGIC_CNST*alpha;
+							//if( (r_wspeed >= 0.0) || (r_wspeed = -0.0) ){
+								//r_wspeed = MAX(MIN(r_wspeed, MAX_WSPEED), MIN_WSPEED);
+							//}else{
+								//r_wspeed = MIN(MAX(r_wspeed, -MAX_WSPEED), -MIN_WSPEED);	
+							//}
 							
 							
 	                        
-	                        if(fabs(alpha) < ANGLE_MARGIN) {
-	                            iInterface.iMotionCtrl->SetStop();
-	                            ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
-	                            state_r = 19;
-	                            carefully = true;
-	                            careful_rho = 0;
-	                            motionState = StateDriving;
-								continue;
-	                        } else {
-			                    //EKF->updateControl(r_speed, r_acc, r_wspeed, 0);
-	                            iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
-	                            ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
-	                        }
-						}
-			            break;                
+	                        //if(fabs(alpha) < ANGLE_MARGIN) {
+	                            //iInterface.iMotionCtrl->SetStop();
+	                            //ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+	                            //state_r = 19;
+	                            //carefully = true;
+	                            //careful_rho = 0;
+	                            //motionState = StateDriving;
+								//continue;
+	                        //} else {
+			                    ////EKF->updateControl(r_speed, r_acc, r_wspeed, 0);
+	                            //iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
+	                            //ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+	                        //}
+						//}
+			            //break;                
 			                
 			                
-		                case StateIdle:
-			                if (step < NUM_WAYPOINTS) {
-								motionState = StateDriving;
-							}
-							//Shout!
-						break;
-						}
-				}else{
-					has_plan = false;
-					//step = 0;
-					wayPnumber ++;
+		                //case StateIdle:
+			                //if (step < NUM_WAYPOINTS) {
+								//motionState = StateDriving;
+							//}
+							////Shout!
+						//break;
+						//}
+				//}else{
+					//has_plan = false;
+					////step = 0;
+					//wayPnumber ++;
 					
-				}
+				//}
                 
-			}                       
+			//}                       
 
-        } else {
-            dPrint(1,"No MotionCtrl available - Terminating MotionDemo thread.");
-            break;
-        }
+        //} else {
+            //dPrint(1,"No MotionCtrl available - Terminating MotionDemo thread.");
+            //break;
+        //}
         
          //5. Increment iteration counter
         ++iterations;
