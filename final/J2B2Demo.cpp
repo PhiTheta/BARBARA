@@ -61,13 +61,6 @@ bool skip_window=false;
 
 
 
-typedef enum {
-	StateIdle = 0,
-	StateDriving,
-	StateTurning
-} MotionState;
-
-MotionState motionState;
 
 
 int iPreviousDirection = 0;
@@ -277,8 +270,8 @@ void CJ2B2Demo::runSLAM()
 					ISGridPose2D generatedPose = generatedPoses.at(i);
 					
 					
-					//vector<ISGridPoint> transformedPoints = transformGridPoints(iPreviousRobotPose, generatedPose, iPreviousLaserData);
-					vector<ISGridPoint> transformedPoints = transformGridPoints(predictedPose, generatedPose, euclideanLaserData);
+					vector<ISGridPoint> transformedPoints = transformGridPoints(iPreviousRobotPose, generatedPose, iPreviousLaserData);
+					//vector<ISGridPoint> transformedPoints = transformGridPoints(predictedPose, generatedPose, euclideanLaserData);
 					int difference = sumGridDifferences(transformedPoints, euclideanLaserData, false);
 					int poseDeviation = getPoseDifference(generatedPose, predictedPose);
 					
@@ -364,7 +357,11 @@ CJ2B2Demo::CJ2B2Demo(CJ2B2Client &aInterface)
     iNextWaypoint(),
     iPauseOn(true),
     iHasPlan(false),
-    iIter(0)
+    iIter(0),
+    iPreviousDirection(DirectionForward),
+    iMotionState(StateIdle),
+    iRobotState(RobotStateIdle),
+    iPreviousRobotState(RobotStateIdle)
 {
 }
 //*****************************************************************************
@@ -381,9 +378,7 @@ void CJ2B2Demo::Execute()
   if (!iDemoActive) {
     // Flag to mark 'Master' DemoActive (controls threads)
     iDemoActive = true;
-    
-    iPreviousDirection = 0;
-    
+        
     const MaCI::Position::TPose2D *mypos = new MaCI::Position::TPose2D::TPose2D(0,0,0);
 	
 	 iInterface.iPositionOdometry->SetPosition(*mypos);
@@ -1148,6 +1143,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
   using namespace MaCI;
  
   const unsigned int turn_duration = 5000;
+  const float angspeed = M_PI / 4.0;
   unsigned int step = 0;
   int posSeq = -1;
   float r_acc = 0.2;
@@ -1155,6 +1151,8 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
   float r_wspeed = 0.5;
   ownTime_ms_t tbegin = 0;
   float K_alpha = 0.05;
+  float proximityAngleLimit = M_PI/2.5;
+  iRobotState = RobotStateWander;
   
   if (iMotionThreadActive) {
     dPrint(1,"MotionDemo already active! Will not start again.");
@@ -1188,147 +1186,221 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 				const TPose2D *pose = pd.GetPose2D();
 				ISGridPose2D myPose = gridPoseFromTPose(pose);
 					
-			     ////Run A*
-				if (!iHasPlan) {
+				if (iRobotState == RobotStateAvoidObstacle) {
 					
-					dPrint(1,"Present X: %f, Present Y: %f", myPose.x, myPose.y );	
-					myPose.angle = 0.0f;
-				
-					int *searchMap = new int[MAP_COLS*MAP_ROWS];
-					mapFromGridMap(iGridMap, &searchMap);
-				
-					pathplan2 plan;
-					iAstarPath = plan.get_graph(searchMap,MAP_COLS,MAP_ROWS,myPose.x,myPose.y,iNextWaypoint.x,iNextWaypoint.y);
-									
-					iSmoothAstarPath = smooth(iAstarPath,WEIGHT_DATA,WEIGHT_SMOOTH,A_TOLERANCE);
+					r_acc = 0.1;
+					r_speed = 0.0;
+					r_wspeed = 0.0;
+				tbegin = ownTime_get_ms();
 					
-					//for(unsigned int i = 0; i < path.size(); i++) {
-						//node aaa = path.at(i);
-						//pose2D bbb = smooth_astar_path.at(i);
-						////dPrint(1, "x: %d y: %d F: %f G: %f H: %f parentx: %d parenty: %d", aaa.x, aaa.y,  aaa.F, aaa.G, aaa.H, aaa.px, aaa.py);
-						////dPrint(1,"x: %d , newX: %f , y: %d , newy: %f", aaa.x, bbb.x, aaa.y, bbb.y);
-					//}
+					//Read laser sensor;
+					float distance = iSmallestDistanceToObject.distance;
+					float angle = iSmallestDistanceToObject.angle;
 					
-					iHasPlan = true;
-					step = 0;
+					float proximityAlertLimit = 0.8;
+					//Allow it to come closer on sides
+					if (angle < proximityAngleLimit && angle > -proximityAngleLimit) {
+						proximityAlertLimit = 0.3;
+					}
+					
+					bool obstacle = distance <= proximityAlertLimit && distance >= 0;
+					
+					if (obstacle) {
+						TurnDirection direction = iPreviousDirection != DirectionUnknown && iPreviousDirection != DirectionForward ? iPreviousDirection : angle < 0 ? DirectionRight : DirectionLeft;
+						
+						//Turn by random angle
+						r_wspeed = angspeed;
+						r_wspeed *= direction == DirectionLeft ? 1 : -1;
+						dPrint(1,"Obstacle at distance %f angle %f. Ang spd %f", distance, angle, r_wspeed);
+						iPreviousDirection = direction;
+						iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
+						ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+					}
+					else {
+						iInterface.iMotionCtrl->SetStop();
+						ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+						iRobotState = iPreviousRobotState;
+						continue;
+					}
 				}
-	
-                if (step < iSmoothAstarPath.size()-1) {
-					   
-					node present = iAstarPath.at(step);
-					Ax_next_stop_meters = present.x * X_RES;
-					Ay_next_stop_meters = present.y * Y_RES;
+				else if (iRobotState == RobotStateWander) {
 					
-					ISGridPose2D next_stop = iSmoothAstarPath.at(step+1);
-					x_next_stop_meters = next_stop.x * X_RES;
-					y_next_stop_meters = next_stop.y * Y_RES;
-					//dPrint(1,"next_stop.x: %d, next_stop.y: %d", next_stop.x,next_stop.y);
+					r_acc = 0.1;
+					r_speed = 0.0;
+					r_wspeed = 0.0;
+				tbegin = ownTime_get_ms();
 					
-					dPrint(1,"\n\n\n\n");
-					if (motionState == StateIdle) { 
-						dPrint(1,"State: Idle");
-					}
-					else if (motionState == StateDriving) { 
-						dPrint(1,"State: Driving");
-					}
-					else if (motionState == StateTurning) { 
-						dPrint(1,"State: Turning");
+					//Read laser sensor;
+					float distance = iSmallestDistanceToObject.distance;
+					float angle = iSmallestDistanceToObject.angle;
+					
+					float proximityAlertLimit = 0.8;
+					//Allow it to come closer on sides
+					if (angle < proximityAngleLimit && angle > -proximityAngleLimit) {
+						proximityAlertLimit = 0.3;
 					}
 					
-					//dPrint(1,"x: %.2f->%.2f", x_present, x_next_stop_meters);
-					//dPrint(1,"y: %.2f->%.2f", y_present, y_next_stop_meters);
-					//dPrint(1,"delta: %.2f, %.2f", dx, dy);
-					//dPrint(1,"rho: %f",rho);
-					//dPrint(1,"alpha is: %f",alpha);
-					//dPrint(1,"a_present is: %f",a_present);
-					//dPrint(1,"v: %.2f; w: %.2f; a: %.2f",r_speed, r_wspeed, r_acc);
-					//dPrint(1,"Step: %d", step);
-					//dPrint(1,"Way Point %d",wayPnumber);
+					bool obstacle = distance <= proximityAlertLimit && distance >= 0;
 					
-					float dx = x_next_stop_meters - myPose.x;
-					float dy = y_next_stop_meters - myPose.y;
+					if (obstacle) {
+						iInterface.iMotionCtrl->SetStop();
+						ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+						iPreviousRobotState = iRobotState;
+						iRobotState = RobotStateAvoidObstacle;
+						continue;
+					}
+					else {
+						r_speed = 0.15;
+						dPrint(1,"No Obstacle. Going forward");
+						iPreviousDirection = DirectionForward;
+						iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
+						ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+					}
 					
-					float alpha = atan2(dy, dx)-myPose.angle;
-                    alpha = truncate(alpha);
+				} else if (iRobotState == RobotStateGoHome || RobotStateGoToStone) {
+					
+				     ////Run A*
+					if (!iHasPlan) {
+						
+						dPrint(1,"Present X: %f, Present Y: %f", myPose.x, myPose.y );	
+						myPose.angle = 0.0f;
+					
+						int *searchMap = new int[MAP_COLS*MAP_ROWS];
+						mapFromGridMap(iGridMap, &searchMap);
+					
+						pathplan2 plan;
+						iAstarPath = plan.get_graph(searchMap,MAP_COLS,MAP_ROWS,myPose.x,myPose.y,iNextWaypoint.x,iNextWaypoint.y);
+										
+						iSmoothAstarPath = smooth(iAstarPath,WEIGHT_DATA,WEIGHT_SMOOTH,A_TOLERANCE);
+						
+						//for(unsigned int i = 0; i < path.size(); i++) {
+							//node aaa = path.at(i);
+							//pose2D bbb = smooth_astar_path.at(i);
+							////dPrint(1, "x: %d y: %d F: %f G: %f H: %f parentx: %d parenty: %d", aaa.x, aaa.y,  aaa.F, aaa.G, aaa.H, aaa.px, aaa.py);
+							////dPrint(1,"x: %d , newX: %f , y: %d , newy: %f", aaa.x, bbb.x, aaa.y, bbb.y);
+						//}
+						
+						iHasPlan = true;
+						step = 0;
+					}
+		
+	                if (step < iSmoothAstarPath.size()-1) {
+						   
+						node present = iAstarPath.at(step);
+						Ax_next_stop_meters = present.x * X_RES;
+						Ay_next_stop_meters = present.y * Y_RES;
+						
+						ISGridPose2D next_stop = iSmoothAstarPath.at(step+1);
+						x_next_stop_meters = next_stop.x * X_RES;
+						y_next_stop_meters = next_stop.y * Y_RES;
+						//dPrint(1,"next_stop.x: %d, next_stop.y: %d", next_stop.x,next_stop.y);
+						
+						dPrint(1,"\n\n\n\n");
+						if (iMotionState == StateIdle) { 
+							dPrint(1,"State: Idle");
+						}
+						else if (iMotionState == StateDriving) { 
+							dPrint(1,"State: Driving");
+						}
+						else if (iMotionState == StateTurning) { 
+							dPrint(1,"State: Turning");
+						}
+						
+						//dPrint(1,"x: %.2f->%.2f", x_present, x_next_stop_meters);
+						//dPrint(1,"y: %.2f->%.2f", y_present, y_next_stop_meters);
+						//dPrint(1,"delta: %.2f, %.2f", dx, dy);
+						//dPrint(1,"rho: %f",rho);
+						//dPrint(1,"alpha is: %f",alpha);
+						//dPrint(1,"a_present is: %f",a_present);
+						//dPrint(1,"v: %.2f; w: %.2f; a: %.2f",r_speed, r_wspeed, r_acc);
+						//dPrint(1,"Step: %d", step);
+						//dPrint(1,"Way Point %d",wayPnumber);
+						
+						float dx = x_next_stop_meters - myPose.x;
+						float dy = y_next_stop_meters - myPose.y;
+						
+						float alpha = atan2(dy, dx)-myPose.angle;
+	                    alpha = truncate(alpha);
+								
+						
+						switch (iMotionState) {
+							case StateDriving:
+							{
+								double rho = sqrt(dx*dx + dy*dy);
+								if (rho <= DIST_MARGIN) {
+		                            step++; 
+									iMotionState = StateTurning;
+									r_speed = MIN_SPEED;
+									r_wspeed = 0;
+									r_acc=0.15;
+									iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
+		                            ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+		                            iMotionState = StateTurning;
+									continue;
+								} 
+								else {
+									r_speed = 0.05;
+									r_wspeed = K_alpha * alpha;
+									
+									if (fabs(alpha) > M_PI_2) {
+										r_speed *= -1;
+									}
+									
+									if (r_speed >= 0.0 || r_speed == -0.0) {
+										r_speed = MAX(MIN(r_speed, MAX_SPEED), MIN_SPEED);
+									}
+									else {
+										r_speed = MIN(MAX(r_speed, -MAX_SPEED), -MIN_SPEED);	
+									}									
+									r_wspeed = MAX(MIN(r_wspeed, MAX_WSPEED), -MAX_WSPEED);
+									               
+									iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
+									ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+								}	
+							}
+							break;
 							
-					
-					switch (motionState) {
-						case StateDriving:
-						{
-							double rho = sqrt(dx*dx + dy*dy);
-							if (rho <= DIST_MARGIN) {
-	                            step++; 
-								motionState = StateTurning;
-								r_speed = MIN_SPEED;
-								r_wspeed = 0;
-								r_acc=0.15;
-								iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
-	                            ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
-	                            motionState = StateTurning;
-								continue;
-							} 
-							else {
-								r_speed = 0.05;
-								r_wspeed = K_alpha * alpha;
-								
-								if (fabs(alpha) > M_PI_2) {
-									r_speed *= -1;
-								}
-								
-								if (r_speed >= 0.0 || r_speed == -0.0) {
-									r_speed = MAX(MIN(r_speed, MAX_SPEED), MIN_SPEED);
+							
+							
+							case StateTurning:
+							{
+								iInterface.iMotionCtrl->SetStop();
+								ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+									    
+							    r_speed = 0;                    
+								r_wspeed = MAGIC_CNST*alpha;
+								if (r_wspeed >= 0.0 || r_wspeed == -0.0) {
+									r_wspeed = MAX(MIN(r_wspeed, MAX_WSPEED), MIN_WSPEED);
 								}
 								else {
-									r_speed = MIN(MAX(r_speed, -MAX_SPEED), -MIN_SPEED);	
-								}									
-								r_wspeed = MAX(MIN(r_wspeed, MAX_WSPEED), -MAX_WSPEED);
-								               
-								iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
-								ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
-							}	
-						}
-						break;
-						
-						
-						
-						case StateTurning:
-						{
-							iInterface.iMotionCtrl->SetStop();
-							ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
-								    
-						    r_speed = 0;                    
-							r_wspeed = MAGIC_CNST*alpha;
-							if (r_wspeed >= 0.0 || r_wspeed == -0.0) {
-								r_wspeed = MAX(MIN(r_wspeed, MAX_WSPEED), MIN_WSPEED);
+									r_wspeed = MIN(MAX(r_wspeed, -MAX_WSPEED), -MIN_WSPEED);	
+								}
+								
+		                        if(fabs(alpha) < ANGLE_MARGIN) {
+		                            iInterface.iMotionCtrl->SetStop();
+		                            ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+		                            iMotionState = StateDriving;
+									continue;
+		                        } else {
+		                            iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
+		                            ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+		                        }
 							}
-							else {
-								r_wspeed = MIN(MAX(r_wspeed, -MAX_WSPEED), -MIN_WSPEED);	
+				            break;                
+				                
+			                case StateIdle:
+				                if (step < NUM_WAYPOINTS) {
+									iMotionState = StateDriving;
+								}
+								//Shout!
+							break;
 							}
-							
-	                        if(fabs(alpha) < ANGLE_MARGIN) {
-	                            iInterface.iMotionCtrl->SetStop();
-	                            ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
-	                            motionState = StateDriving;
-								continue;
-	                        } else {
-	                            iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
-	                            ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
-	                        }
-						}
-			            break;                
-			                
-		                case StateIdle:
-			                if (step < NUM_WAYPOINTS) {
-								motionState = StateDriving;
-							}
-							//Shout!
-						break;
-						}
-				}
-				else {
-					iHasPlan = false;
-					//step = 0;
-					wayPnumber++;
+					}
+					else {
+						iHasPlan = false;
+						//step = 0;
+						wayPnumber++;
+					}
 				}
 			}  
         } else {
@@ -1416,7 +1488,7 @@ int CJ2B2Demo::RunSensorsDemo(int aIterations)
         iLastLaserTimestamp = laserTimestamp;
         Unlock();
         
-        runSLAM();
+       // runSLAM();
         
         // Check distances received.
         //

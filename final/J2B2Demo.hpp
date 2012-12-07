@@ -19,6 +19,32 @@
 #define X_RES			(MAP_WIDTH/MAP_COLS)
 #define Y_RES			(MAP_HEIGHT/MAP_ROWS)
 
+
+typedef enum {
+	StateIdle = 0,
+	StateDriving,
+	StateTurning
+} MotionState;
+
+typedef enum {
+	RobotStateIdle = 0,
+	RobotStateWander,
+	RobotStateAvoidObstacle,
+	RobotStateGoToStone,
+	RobotStateGoHome,
+	RobotStateOpenGripper,
+	RobotStateCloseGripper,
+	RobotStateMoveAway,
+	RobotStateShutdown
+} InternalState;
+
+typedef enum {
+	DirectionUnknown = -1,
+	DirectionForward = 0,
+	DirectionLeft = 1,
+	DirectionRight = 2
+} TurnDirection;
+
 class CJ2B2Demo : private gim::CSync, 
                   private gim::CThread
 {
@@ -92,6 +118,10 @@ private:
   volatile bool iPauseOn;
   volatile bool iHasPlan;
   int iIter;
+  TurnDirection iPreviousDirection;
+  MotionState iMotionState;
+  InternalState iRobotState;
+  InternalState iPreviousRobotState;
   void updateMap(ISGridPose2D pose, vector<ISGridPoint> scans);
   void runSLAM();
   ISGridPose2D gridPoseFromTPose(const MaCI::Position::TPose2D *pose);
