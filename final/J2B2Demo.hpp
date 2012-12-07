@@ -10,6 +10,7 @@
 #include "sync.hpp"
 #include "J2B2-API.hpp"
 #include "../simpleSLAM/slam.h"
+#include "astar/pathplan2.h"
 
 #define MAP_WIDTH		4.5
 #define MAP_HEIGHT		3.7
@@ -85,12 +86,18 @@ private:
   ISGridPose2D iPreviousOdometryPose;
   vector<ISGridPoint> iGridMap;
   vector<ISGridPoint> iPreviousLaserData;
+  vector<ISGridPose2D> iSmoothAstarPath;
+  vector<node> iAstarPath;
+  ISGridPoint iNextWaypoint;
   volatile bool iPauseOn;
+  volatile bool iHasPlan;
   int iIter;
   void updateMap(ISGridPose2D pose, vector<ISGridPoint> scans);
   void runSLAM();
   ISGridPose2D gridPoseFromTPose(const MaCI::Position::TPose2D *pose);
+  vector<ISGridPose2D> smooth(vector<node> astar_path, float weight_data, float weight_smooth, float tolerance);
   vector<ISGridPoint> getEuclideanLaserData();
+  void mapFromGridMap(vector<ISGridPoint> map, int **output);
 };
 
 #endif

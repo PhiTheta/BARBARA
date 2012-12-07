@@ -54,7 +54,10 @@ bool skip_window=false;
 #define MAX_SPEED		0.4
 #define MIN_SPEED		0.1
 #define MAGIC_CNST		2
-#define NUM_WAYPOINTS	12
+#define NUM_WAYPOINTS	14
+#define WEIGHT_DATA     0.12
+#define WEIGHT_SMOOTH	0.12
+#define A_TOLERANCE 	0.00001
 
 
 
@@ -68,14 +71,6 @@ MotionState motionState;
 
 
 int iPreviousDirection = 0;
-
-int w = 45;
-int h = 37;
-float real_w = 4.5;
-float real_h = 3.7;
-bool has_plan = false;
-unsigned int step = 0;
-//vector<node> path;
 
 inline float truncate(float val)
 {
@@ -117,6 +112,65 @@ vector<ISGridPoint> CJ2B2Demo::getEuclideanLaserData()
 		}
 	}
 	return euclideanLaserData;
+}
+
+void CJ2B2Demo::mapFromGridMap(vector<ISGridPoint> map, int **output)
+{
+	for (int i = 0; i < MAP_ROWS; i++) {
+		for (int j = 0; j < MAP_COLS; j++) {
+			int idx = i*MAP_COLS+j;
+			(*output)[idx] = 1;
+			for (vector<ISGridPoint>::iterator iterator = map.begin(); iterator < map.end(); iterator++) {
+				ISGridPoint point = *iterator;
+				if (point.x == j && point.y == i) {
+					(*output)[idx] = 0;
+					break;
+				}
+			}
+		}
+	}
+}
+
+vector<ISGridPose2D> CJ2B2Demo::smooth(vector<node> astar_path, float weight_data, float weight_smooth, float tolerance)
+{
+	vector<ISGridPose2D> smooth_astar_path, original_astar_path;
+	
+	//Make a Copy of X and Y
+	for(unsigned int i = 0; i < astar_path.size(); i++) {
+		node originalNode = astar_path.at(i);
+		ISGridPose2D pose;
+		pose.x = (float)originalNode.x;
+		pose.y = (float)originalNode.y;
+		smooth_astar_path.push_back(pose);
+		original_astar_path.push_back(pose);
+	}
+	
+	float change = tolerance;
+	ISGridPose2D aux_i, new_point, aux_i1, aux_i2, initial_XY;
+	
+	while(change >= tolerance) {
+		change = 0.0;					
+		for(unsigned int i = 1; i < smooth_astar_path.size()-1; i++) {
+			aux_i = smooth_astar_path.at(i);
+			aux_i1 = smooth_astar_path.at(i-1);
+			aux_i2 = smooth_astar_path.at(i+1);
+			new_point = aux_i;
+			initial_XY = original_astar_path.at(i);
+			
+			new_point.x += weight_data * (initial_XY.x - new_point.x);
+			new_point.x += weight_smooth * ( ( aux_i1.x + aux_i2.x) - ( 2.0 * new_point.x) );
+			change += fabs(aux_i.x - new_point.x);
+			smooth_astar_path.at(i) = new_point;
+			
+			new_point.y += weight_data * (initial_XY.y - new_point.y);
+			new_point.y += weight_smooth * ( ( aux_i1.y + aux_i2.y) - ( 2.0 * new_point.y) );
+			change += fabs(aux_i.y - new_point.y);
+			smooth_astar_path.at(i) = new_point;
+		}
+		//dPrint(1,"ToleranceX: %f", change);
+	}
+	
+	return smooth_astar_path;
 }
 
 void CJ2B2Demo::runSLAM()
@@ -305,7 +359,11 @@ CJ2B2Demo::CJ2B2Demo(CJ2B2Client &aInterface)
     iPreviousOdometryPose(),
     iGridMap(),
     iPreviousLaserData(),
+	iSmoothAstarPath(),
+	iAstarPath(),
+    iNextWaypoint(),
     iPauseOn(true),
+    iHasPlan(false),
     iIter(0)
 {
 }
@@ -1088,56 +1146,16 @@ int CJ2B2Demo::RunCameraDemo(int aIterations)
 int CJ2B2Demo::RunMotionDemo(int aIterations){
   using namespace MaCI::Position;
   using namespace MaCI;
-  //const float angspeed = M_PI / 4.0;
-  //const unsigned int turn_duration = 5000;
-  //bool dirLeft = true;
-  //ownTime_ms_t tbegin;
+ 
+  const unsigned int turn_duration = 5000;
+  unsigned int step = 0;
+  int posSeq = -1;
+  float r_acc = 0.2;
+  float r_speed = 0.0;
+  float r_wspeed = 0.5;
+  ownTime_ms_t tbegin = 0;
+  float K_alpha = 0.05;
   
-  //variables midterm
-  //float r_acc = 0.2;
-  //float r_speed = 0.0;
-  //float r_wspeed = 0.5;
-  //int posSeq = -1;
-  //bool carefully = false;
-  //float careful_rho = 0;
-  step = 0;
-  //float x_present;
-  //float y_present;
-  //float a_present, a_present_abs;
-  //float a_next, a_present_2pi;
-  
-	//float x_next[15] = {3.6, 3.6, 3.6, 2.7, 2.7, 2.0, 1.6, 1.5, 1.0, 0.5, 0.9, 1.6, 2.4, 2.4, 3};
-	//float y_next[15] = {2.7, 1.5, 0.5, 0.6, 1.7, 1.7, 1.7, 0.65, 0.65, 0.65, 2.4, 2.4, 2.4, 2.7, 2.7};
-	//float x_next[NUM_WAYPOINTS] = {3.6, 3.6, 3.6, 2.7, 2.7, 2.2, 1.0, 0.5, 0.9, 1.6, 2.4, 2.4, 3};
-	//float y_next[NUM_WAYPOINTS] = {2.7, 1.5, 0.5, 0.6, 1.7, 1.7, 0.65, 0.65, 2.4, 2.4, 2.4, 2.7, 2.7};
-	
-	
-	//WORKING
-	//float x_next[NUM_WAYPOINTS] = {3.6, 3.6, 3.6, 3, 2.5, 1.8, 1.5, 0.5, 0.9, 1.6, 3};
-	//float y_next[NUM_WAYPOINTS] = {2.7, 1.5, 0.5, 0.5, 1.6, 1.6, 0.85, 0.85, 2.4, 2.4, 2.7};
-	
-	//ALMOST
-	//float x_next[NUM_WAYPOINTS] = {3.6, 3.6, 3.6, 2.8, 2.5, 1.8, 1.5, 0.5, 0.5, 2, 2.8};
-	//float y_next[NUM_WAYPOINTS] = {2.7, 1.5, 0.5, 0.5, 1.6, 1.6, 0.95, 0.95, 2.4, 2.4, 2.7};
-		
-	//LAST WORKING VERSION. 4:52 AM
-	//float x_next[NUM_WAYPOINTS] = {3.6, 3.6, 3.6, 2.8, 2.5, 1.8, 1.5, 0.5, 0.5, 1.2, 2, 2.8};
-	//float y_next[NUM_WAYPOINTS] = {2.7, 1.5, 0.5, 0.5, 1.6, 1.6, 0.85, 0.85, 1.7, 2.6, 2.6, 2.8};
-					    
-  //int state_r=0; 
-  //bool check_flag = false, motion_flag = false; // for debugging
-  
-  //robotPose.x = 0;
-  //robotPose.y = 0;
-  //robotPose.angle = 0;
-  
-  //Control Loop from Lecture Slides
-  //float rho=1, alpha, beta;
-  //float dx=0.1, dy=0.1;
-  //float K_rho= 0.15, K_alpha=0.7, K_beta=-0.05;
-  //float K_rho= 0.3, K_alpha=0.7, K_beta=-0.15;
-  //float K_rho= 1, K_alpha=2.66, K_beta=(-0.5);
-
   if (iMotionThreadActive) {
     dPrint(1,"MotionDemo already active! Will not start again.");
     return -1;
@@ -1152,133 +1170,121 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
    
 
 	iInterface.iBehaviourCtrl->SetStart();
+	
+	
+	int wayPnumber=0;
+	float x_next_stop_meters,Ax_next_stop_meters;
+	float y_next_stop_meters,Ay_next_stop_meters;
 
 	int iterations = 0;
 	while(iDemoActive && iMotionThreadActive && (aIterations == -1 || iterations < aIterations)) {
     
 		// Got MotionCtrl?
 		if (iInterface.iMotionCtrl) {
-			
-            
-            
-            ////////////////IVAN'S MID TERM CODE//////////////////////////////////////////////
-            
-            //Run A*
-            
-			//if (!has_plan) {
-            //pathplan2 plan;
-            //path = plan.get_graph(iMap,w,h,iPose.x,iPose.y,wayPoint.x,wayPoint.y);
-            //for(unsigned int i = 0; i < path.size(); i++) {
-            //node aaa = path.at(i);
-            //dPrint(1, "x: %d y: %d F: %f G: %f H: %f parentx: %d parenty: %d", aaa.x, aaa.y,  aaa.F, aaa.G, aaa.H, aaa.px, aaa.py);
-            //}
-            //has_plan = true;
-            //step =0;
-			//}
-			
-			
-            	
 			if (iInterface.iPositionOdometry) {
-				      
-				  
-				  
-				  
-////////////////////////MID_TERM CODE////////////////////////////////////////	  
-				  /*
-				if (step < NUM_WAYPOINTS) {
-                    
-					MaCI::Position::CPositionData pd;
-					iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000);
-					const TPose2D *pose = pd.GetPose2D();
-
-                    double v, w, x_present, y_present, a_present;
-                    
-                    //This also records data into the files
-					//EKF->insertMeasurement(pose->x, pose->y, pose->a);
-                    
-                    
-					/ *
-                    EKF->readEstimates(&x_present, &y_present, &a_present, &v, &w);
-                    // * /
-                    // *
-					x_present = pose->x;
-					y_present = pose->y;
-					a_present = pose->a;
-					// * /
-					// *
+				    
+				MaCI::Position::CPositionData pd;
+				iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000);
+				const TPose2D *pose = pd.GetPose2D();
+				ISGridPose2D myPose = gridPoseFromTPose(pose);
+					
+			     ////Run A*
+				if (!iHasPlan) {
+					
+					dPrint(1,"Present X: %f, Present Y: %f", myPose.x, myPose.y );	
+					myPose.angle = 0.0f;
+				
+					int *searchMap = new int[MAP_COLS*MAP_ROWS];
+					mapFromGridMap(iGridMap, &searchMap);
+				
+					pathplan2 plan;
+					iAstarPath = plan.get_graph(searchMap,MAP_COLS,MAP_ROWS,myPose.x,myPose.y,iNextWaypoint.x,iNextWaypoint.y);
+									
+					iSmoothAstarPath = smooth(iAstarPath,WEIGHT_DATA,WEIGHT_SMOOTH,A_TOLERANCE);
+					
+					//for(unsigned int i = 0; i < path.size(); i++) {
+						//node aaa = path.at(i);
+						//pose2D bbb = smooth_astar_path.at(i);
+						////dPrint(1, "x: %d y: %d F: %f G: %f H: %f parentx: %d parenty: %d", aaa.x, aaa.y,  aaa.F, aaa.G, aaa.H, aaa.px, aaa.py);
+						////dPrint(1,"x: %d , newX: %f , y: %d , newy: %f", aaa.x, bbb.x, aaa.y, bbb.y);
+					//}
+					
+					iHasPlan = true;
+					step = 0;
+				}
+	
+                if (step < iSmoothAstarPath.size()-1) {
+					   
+					node present = iAstarPath.at(step);
+					Ax_next_stop_meters = present.x * X_RES;
+					Ay_next_stop_meters = present.y * Y_RES;
+					
+					ISGridPose2D next_stop = iSmoothAstarPath.at(step+1);
+					x_next_stop_meters = next_stop.x * X_RES;
+					y_next_stop_meters = next_stop.y * Y_RES;
+					//dPrint(1,"next_stop.x: %d, next_stop.y: %d", next_stop.x,next_stop.y);
+					
 					dPrint(1,"\n\n\n\n");
-					if (motionState == StateIdle) { dPrint(1,"State: Idle");}
-					else if (motionState == StateDriving) { dPrint(1,"State: Driving");}
-					else if (motionState == StateTurning) { dPrint(1,"State: Turning");}
-					dPrint(1,"x: %.2f->%.2f", x_present, x_next[step]);
-					dPrint(1,"y: %.2f->%.2f", y_present, y_next[step]);
-					dPrint(1,"delta: %.2f, %.2f", dx, dy);
-					dPrint(1,"rho: %f",rho);
-					dPrint(1,"alpha is: %f",alpha);
-					dPrint(1,"a_present is: %f",a_present);
-					dPrint(1,"v: %.2f; w: %.2f; a: %.2f",r_speed, r_wspeed, r_acc);
-					dPrint(1,"Step: %d", step);
-					// * /           
-										
-					dx = (x_next[step] - x_present);
-					dy = (y_next[step] - y_present);
-					alpha = atan2(dy, dx)-a_present;
+					if (motionState == StateIdle) { 
+						dPrint(1,"State: Idle");
+					}
+					else if (motionState == StateDriving) { 
+						dPrint(1,"State: Driving");
+					}
+					else if (motionState == StateTurning) { 
+						dPrint(1,"State: Turning");
+					}
+					
+					//dPrint(1,"x: %.2f->%.2f", x_present, x_next_stop_meters);
+					//dPrint(1,"y: %.2f->%.2f", y_present, y_next_stop_meters);
+					//dPrint(1,"delta: %.2f, %.2f", dx, dy);
+					//dPrint(1,"rho: %f",rho);
+					//dPrint(1,"alpha is: %f",alpha);
+					//dPrint(1,"a_present is: %f",a_present);
+					//dPrint(1,"v: %.2f; w: %.2f; a: %.2f",r_speed, r_wspeed, r_acc);
+					//dPrint(1,"Step: %d", step);
+					//dPrint(1,"Way Point %d",wayPnumber);
+					
+					float dx = x_next_stop_meters - myPose.x;
+					float dy = y_next_stop_meters - myPose.y;
+					
+					float alpha = atan2(dy, dx)-myPose.angle;
                     alpha = truncate(alpha);
 							
 					
 					switch (motionState) {
 						case StateDriving:
 						{
-							rho = sqrt(dx*dx + dy*dy);
-							
+							double rho = sqrt(dx*dx + dy*dy);
 							if (rho <= DIST_MARGIN) {
 	                            step++; 
 								motionState = StateTurning;
-								iInterface.iMotionCtrl->SetStop();
-								ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+								r_speed = MIN_SPEED;
+								r_wspeed = 0;
+								r_acc=0.15;
+								iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
+	                            ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+	                            motionState = StateTurning;
 								continue;
-							} else {
+							} 
+							else {
+								r_speed = 0.05;
+								r_wspeed = K_alpha * alpha;
 								
-								if (carefully) {
-									//Set it for the first time
-									if (careful_rho == 0) {
-										careful_rho = rho-0.1;
-									}
-									r_wspeed = 0;
-									r_speed = 0.05;
-				                    //EKF->updateControl(r_speed, r_acc, r_wspeed, 0);		               
-									iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
-									ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
-									
-									//Switch to control algorithm
-									if (rho < careful_rho) {
-										carefully = false;
-									}
+								if (fabs(alpha) > M_PI_2) {
+									r_speed *= -1;
+								}
+								
+								if (r_speed >= 0.0 || r_speed == -0.0) {
+									r_speed = MAX(MIN(r_speed, MAX_SPEED), MIN_SPEED);
 								}
 								else {
-									beta = -(a_present + alpha);
-									beta = truncate(beta);
-											
-									r_speed = K_rho * rho;
-									r_wspeed = K_alpha * alpha + K_beta * beta;
-									if (fabs(alpha) > M_PI_2) {
-										r_speed *= -1;
-									}
-									
-									r_speed = MAX(MIN(r_speed, MAX_SPEED), -MAX_SPEED);
-									r_wspeed = MAX(MIN(r_wspeed, MAX_WSPEED), -MAX_WSPEED);
-									
-									r_speed *= 2;
-									r_wspeed *= 2;
-									
-									//if (fabs(r_speed) < MIN_SPEED) {
-										//r_speed = r_speed < 0 ? -MIN_SPEED : MIN_SPEED;
-									//}
-									
-				                    //EKF->updateControl(r_speed, r_acc, r_wspeed, 0);		               
-									iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
-									ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
-								}
+									r_speed = MIN(MAX(r_speed, -MAX_SPEED), -MIN_SPEED);	
+								}									
+								r_wspeed = MAX(MIN(r_wspeed, MAX_WSPEED), -MAX_WSPEED);
+								               
+								iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
+								ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
 							}	
 						}
 						break;
@@ -1292,28 +1298,24 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 								    
 						    r_speed = 0;                    
 							r_wspeed = MAGIC_CNST*alpha;
-							r_wspeed = MAX(MIN(r_wspeed, MAX_WSPEED), -MAX_WSPEED);
-							r_wspeed = MIN(MAX(r_wspeed, MIN_WSPEED), -MIN_WSPEED);
-	                        
+							if (r_wspeed >= 0.0 || r_wspeed == -0.0) {
+								r_wspeed = MAX(MIN(r_wspeed, MAX_WSPEED), MIN_WSPEED);
+							}
+							else {
+								r_wspeed = MIN(MAX(r_wspeed, -MAX_WSPEED), -MIN_WSPEED);	
+							}
+							
 	                        if(fabs(alpha) < ANGLE_MARGIN) {
 	                            iInterface.iMotionCtrl->SetStop();
 	                            ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
-	                            state_r = 19;
-	                            carefully = true;
-	                            careful_rho = 0;
 	                            motionState = StateDriving;
 								continue;
 	                        } else {
-			                    //EKF->updateControl(r_speed, r_acc, r_wspeed, 0);
 	                            iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
 	                            ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
 	                        }
 						}
-			            break;
-			                
-			                
-			                
-			                
+			            break;                
 			                
 		                case StateIdle:
 			                if (step < NUM_WAYPOINTS) {
@@ -1322,14 +1324,13 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 							//Shout!
 						break;
 						}
-				}else{
-					//has_plan = false;
-					step = 0;
 				}
-                
-			*/
-			}
-			
+				else {
+					iHasPlan = false;
+					//step = 0;
+					wayPnumber++;
+				}
+			}  
         } else {
             dPrint(1,"No MotionCtrl available - Terminating MotionDemo thread.");
             break;
