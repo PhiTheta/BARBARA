@@ -11,6 +11,7 @@
 #include "J2B2-API.hpp"
 #include "../simpleSLAM/slam.h"
 #include "astar/pathplan2.h"
+#include "../camera/camera.h"
 
 #define MAP_WIDTH		4.5
 #define MAP_HEIGHT		3.7
@@ -66,7 +67,7 @@ private:
    */
   enum EThreadImplementation { 
     KThreadSensorsDemo = 0,   ///< Sensors demo
-    KThreadInfoDemo    = 1,   ///< Info demo
+    KThreadInfoDemo    = 1,   ///< Info demo]
     KThreadMotionDemo  = 2,   ///< Motion demo
     KThreadCameraDemo  = 3,   ///< Camera demo
     KThreadSDLDemo     = 4    ///< SDL demo
@@ -128,6 +129,7 @@ private:
   vector<ISGridPose2D> smooth(vector<node> astar_path, float weight_data, float weight_smooth, float tolerance);
   vector<ISGridPoint> getEuclideanLaserData();
   void mapFromGridMap(vector<ISGridPoint> map, int **output);
+  void analyzeCamera();
 };
 
 #endif

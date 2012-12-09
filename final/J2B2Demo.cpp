@@ -60,6 +60,7 @@ bool skip_window=false;
 #define A_TOLERANCE 	0.00001
 
 
+SDL_Surface *mainScreen = NULL;
 
 
 
@@ -92,6 +93,45 @@ ISGridPose2D CJ2B2Demo::gridPoseFromTPose(const MaCI::Position::TPose2D *pose)
 	//if (!iPauseOn) dPrint(1,"%f,%f -> %f,%f -> %d,%d [%f,%f]", pose->x, pose->y, xind, yind, res.x, res.y, X_RES, Y_RES);
 	
 	return res;
+}
+
+void CJ2B2Demo::analyzeCamera()
+{
+	dPrint(1, "Analyzing camera image");
+    if (iLastCameraImage.GetImageDataType() == MaCI::Image::KImageDataJPEG &&
+        iLastCameraImage.GetImageDataPtr() != NULL) {
+      SDL_Surface *image;
+      SDL_RWops *rw;
+      SDL_Rect rcDest = {0,0,0,0};
+      
+      rw = SDL_RWFromMem((void*)iLastCameraImage.GetImageDataPtr(), 
+                         iLastCameraImage.GetImageDataSize());
+      image = IMG_LoadJPG_RW(rw);
+      SDL_BlitSurface(image, NULL, mainScreen, &rcDest);
+      SDL_FreeSurface(image);
+		dPrint(1, "Got an image");
+      
+      Camera_Obstacle_Alarm answer = Find_Object(image, 1);	//1 - red, 2 - blue
+      if (answer.Red_Obstacle_Flag) {
+		  
+		  
+		  Camera_Distance distance = Postion_Object(answer.c_x, answer.c_y);
+		  
+		  
+			dPrint(1, "Found something (distance %f; angle %f)", distance.distance, distance.angle);
+		  
+		  //Create a waypoint here
+		  //In Universal frame
+		  iNextWaypoint = laserToWorld(distance.distance, distance.angle, iRobotPose, iLaserPosition.x, X_RES, Y_RES);
+		  
+		  iRobotState = RobotStateGoToStone;
+	  }
+      
+    }
+    else {
+		dPrint(1, "Image not available");
+	}
+  
 }
 
 vector<ISGridPoint> CJ2B2Demo::getEuclideanLaserData()
@@ -540,6 +580,8 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
   
   // Clear the screen
   SDL_FillRect(screen, NULL, 0);
+
+  mainScreen = screen;
 
   // Set imporant info :)
   SDL_WM_SetCaption("Simple J2B2 Demo application","J2B2Demo");
@@ -1146,6 +1188,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
   const float angspeed = M_PI / 4.0;
   unsigned int step = 0;
   int posSeq = -1;
+  int cnt = 0;
   float r_acc = 0.2;
   float r_speed = 0.0;
   float r_wspeed = 0.5;
@@ -1250,6 +1293,12 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 						continue;
 					}
 					else {
+						
+						if (cnt++ == 60) {
+							cnt = 0;
+							analyzeCamera();
+						}
+						
 						r_speed = 0.15;
 						dPrint(1,"No Obstacle. Going forward");
 						iPreviousDirection = DirectionForward;
@@ -1488,7 +1537,7 @@ int CJ2B2Demo::RunSensorsDemo(int aIterations)
         iLastLaserTimestamp = laserTimestamp;
         Unlock();
         
-       // runSLAM();
+        runSLAM();
         
         // Check distances received.
         //
