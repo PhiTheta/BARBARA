@@ -1218,7 +1218,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 	float y_next_stop_meters,Ay_next_stop_meters;
 
 	int iterations = 0;
-	while(iDemoActive && iMotionThreadActive && (aIterations == -1 || iterations < aIterations)) {
+	while(iDemoActive && iMotionThreadActive && (aIterations == -1 || iterations < aIterations) && iRobotState != RobotStateShutdown) {
     
 		// Got MotionCtrl?
 		if (iInterface.iMotionCtrl) {
@@ -1229,7 +1229,35 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 				const TPose2D *pose = pd.GetPose2D();
 				ISGridPose2D myPose = gridPoseFromTPose(pose);
 					
-				if (iRobotState == RobotStateAvoidObstacle) {
+				if (iRobotState == RobotStateMoveAway) {
+					r_acc = 0.1;
+					r_speed = -0.5;
+					r_wspeed = 0;
+					iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
+					ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+					if (abs(iRobotPose.x) > 2 || abs(iRobotPose.y) > 2) {
+						iInterface.iMotionCtrl->SetStop();
+						iRobotState = RobotStateShutdown;
+						dPrint(1, "Mission complete. Good bye!");
+					}
+				}
+				else if (iRobotState == RobotStateOpenGripper) {
+					bool open = iInterface.iServoCtrl->SetPosition(0, KServoUserServo_0);
+			        ownSleep_ms(200);	
+			        if (open) {
+						iRobotState = RobotStateMoveAway;
+					}
+				}	
+				else if (iRobotState == RobotStateCloseGripper) {
+					bool closed = iInterface.iServoCtrl->SetPosition(M_PI/3-M_PI/20, KServoUserServo_0);
+			        ownSleep_ms(200);	
+			        if (closed) {
+						iNextWaypoint.x = 0;
+						iNextWaypoint.y = 0;
+						iRobotState = RobotStateGoHome;
+					}
+				}
+				else if (iRobotState == RobotStateAvoidObstacle) {
 					
 					r_acc = 0.1;
 					r_speed = 0.0;
