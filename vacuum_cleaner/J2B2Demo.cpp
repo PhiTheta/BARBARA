@@ -793,7 +793,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations)
       float r_acc = 0.1;
        float r_speed = 0.0;
        float r_wspeed = 0.0;
-      float proximityAlertLimit = 0.8;
+      float proximityAlertLimit = 0.4;
       float proximityAngleLimit = M_PI/2.5;
       tbegin = ownTime_get_ms();
       

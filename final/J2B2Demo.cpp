@@ -1184,7 +1184,6 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
   using namespace MaCI::Position;
   using namespace MaCI;
  
-  const unsigned int turn_duration = 5000;
   const float angspeed = M_PI / 4.0;
   unsigned int step = 0;
   int posSeq = -1;
@@ -1192,7 +1191,6 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
   float r_acc = 0.2;
   float r_speed = 0.0;
   float r_wspeed = 0.5;
-  ownTime_ms_t tbegin = 0;
   float K_alpha = 0.05;
   float proximityAngleLimit = M_PI/2.5;
   iRobotState = RobotStateWander;
@@ -1230,11 +1228,12 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 				ISGridPose2D myPose = gridPoseFromTPose(pose);
 					
 				if (iRobotState == RobotStateMoveAway) {
+					dPrint(1, "Moving away from the base");
 					r_acc = 0.1;
 					r_speed = -0.5;
 					r_wspeed = 0;
 					iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
-					ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+					ownSleep_ms(200);
 					if (abs(iRobotPose.x) > 2 || abs(iRobotPose.y) > 2) {
 						iInterface.iMotionCtrl->SetStop();
 						iRobotState = RobotStateShutdown;
@@ -1242,6 +1241,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 					}
 				}
 				else if (iRobotState == RobotStateOpenGripper) {
+					dPrint(1, "Openning gripper");
 					bool open = iInterface.iServoCtrl->SetPosition(0, KServoUserServo_0);
 			        ownSleep_ms(200);	
 			        if (open) {
@@ -1249,6 +1249,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 					}
 				}	
 				else if (iRobotState == RobotStateCloseGripper) {
+					dPrint(1, "Closing grippper");
 					bool closed = iInterface.iServoCtrl->SetPosition(M_PI/3-M_PI/20, KServoUserServo_0);
 			        ownSleep_ms(200);	
 			        if (closed) {
@@ -1259,16 +1260,17 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 				}
 				else if (iRobotState == RobotStateAvoidObstacle) {
 					
+					dPrint(1, "Avoiding obstacle");
+					
 					r_acc = 0.1;
 					r_speed = 0.0;
 					r_wspeed = 0.0;
-				tbegin = ownTime_get_ms();
 					
 					//Read laser sensor;
 					float distance = iSmallestDistanceToObject.distance;
 					float angle = iSmallestDistanceToObject.angle;
 					
-					float proximityAlertLimit = 0.8;
+					float proximityAlertLimit = 0.4;
 					//Allow it to come closer on sides
 					if (angle < proximityAngleLimit && angle > -proximityAngleLimit) {
 						proximityAlertLimit = 0.3;
@@ -1285,27 +1287,27 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 						dPrint(1,"Obstacle at distance %f angle %f. Ang spd %f", distance, angle, r_wspeed);
 						iPreviousDirection = direction;
 						iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
-						ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+						ownSleep_ms(200);
 					}
 					else {
-						iInterface.iMotionCtrl->SetStop();
-						ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+						//iInterface.iMotionCtrl->SetStop();
+						//ownSleep_ms(200);
 						iRobotState = iPreviousRobotState;
 						continue;
 					}
 				}
 				else if (iRobotState == RobotStateWander) {
 					
+					dPrint(1, "Wandering");
 					r_acc = 0.1;
 					r_speed = 0.0;
 					r_wspeed = 0.0;
-				tbegin = ownTime_get_ms();
 					
 					//Read laser sensor;
 					float distance = iSmallestDistanceToObject.distance;
 					float angle = iSmallestDistanceToObject.angle;
 					
-					float proximityAlertLimit = 0.8;
+					float proximityAlertLimit = 0.4;
 					//Allow it to come closer on sides
 					if (angle < proximityAngleLimit && angle > -proximityAngleLimit) {
 						proximityAlertLimit = 0.3;
@@ -1314,8 +1316,8 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 					bool obstacle = distance <= proximityAlertLimit && distance >= 0;
 					
 					if (obstacle) {
-						iInterface.iMotionCtrl->SetStop();
-						ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+						//iInterface.iMotionCtrl->SetStop();
+						//ownSleep_ms(200);
 						iPreviousRobotState = iRobotState;
 						iRobotState = RobotStateAvoidObstacle;
 						continue;
@@ -1325,16 +1327,21 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 						if (cnt++ == 60) {
 							cnt = 0;
 							analyzeCamera();
+							continue;
 						}
 						
-						r_speed = 0.15;
-						dPrint(1,"No Obstacle. Going forward");
+						r_acc = 0.1;
+						r_wspeed = 0.0;
+						r_speed = 0.5;
+						dPrint(1,"No Obstacle. Going forward (%f,%f,%f)", r_speed, r_wspeed, r_acc);
 						iPreviousDirection = DirectionForward;
 						iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
-						ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+						ownSleep_ms(200);
 					}
 					
 				} else if (iRobotState == RobotStateGoHome || RobotStateGoToStone) {
+					
+					dPrint(1, "Navigating");
 					
 				     ////Run A*
 					if (!iHasPlan) {
@@ -1411,7 +1418,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 									r_wspeed = 0;
 									r_acc=0.15;
 									iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
-		                            ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+		                            ownSleep_ms(200);
 		                            iMotionState = StateTurning;
 									continue;
 								} 
@@ -1432,7 +1439,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 									r_wspeed = MAX(MIN(r_wspeed, MAX_WSPEED), -MAX_WSPEED);
 									               
 									iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
-									ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+									ownSleep_ms(200);
 								}	
 							}
 							break;
@@ -1442,7 +1449,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 							case StateTurning:
 							{
 								iInterface.iMotionCtrl->SetStop();
-								ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+								ownSleep_ms(200);
 									    
 							    r_speed = 0;                    
 								r_wspeed = MAGIC_CNST*alpha;
@@ -1455,12 +1462,12 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 								
 		                        if(fabs(alpha) < ANGLE_MARGIN) {
 		                            iInterface.iMotionCtrl->SetStop();
-		                            ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+		                            ownSleep_ms(200);
 		                            iMotionState = StateDriving;
 									continue;
 		                        } else {
 		                            iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
-		                            ownSleep_ms(MIN(200,ownTime_get_ms_left(turn_duration, tbegin)));
+		                            ownSleep_ms(200);
 		                        }
 							}
 				            break;                
@@ -1565,7 +1572,7 @@ int CJ2B2Demo::RunSensorsDemo(int aIterations)
         iLastLaserTimestamp = laserTimestamp;
         Unlock();
         
-        runSLAM();
+     //   runSLAM();
         
         // Check distances received.
         //
