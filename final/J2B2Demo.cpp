@@ -838,14 +838,15 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
     // wrong)
     
 
-    //if (iMotionThreadActive == false && 
-      //  ownTime_get_ms_since(speedcommand_last_sent) > 200) {
+    if (iMotionThreadActive == false && 
+        ownTime_get_ms_since(speedcommand_last_sent) > 200) {
       // Only send if the motion demo is not active (it is a
       // standalone demo controlling the robot, if it is active,
       // sending commands to robot would only mess up things)
+      dPrint(1,"Setspeed");
       iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
       speedcommand_last_sent = ownTime_get_ms();
-   // }
+    }
 
 
     // Then, apply the PTU manual control parameters.
@@ -1217,11 +1218,10 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 
 	int iterations = 0;
 	while(iDemoActive && iMotionThreadActive && (aIterations == -1 || iterations < aIterations) && iRobotState != RobotStateShutdown) {
-    
 		// Got MotionCtrl?
 		if (iInterface.iMotionCtrl) {
 			if (iInterface.iPositionOdometry) {
-				    
+					
 				MaCI::Position::CPositionData pd;
 				iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000);
 				const TPose2D *pose = pd.GetPose2D();
@@ -1285,6 +1285,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 						r_wspeed = angspeed;
 						r_wspeed *= direction == DirectionLeft ? 1 : -1;
 						dPrint(1,"Obstacle at distance %f angle %f. Ang spd %f", distance, angle, r_wspeed);
+						dPrint(1,"iMotionCtrl %p",iInterface.iMotionCtrl);
 						iPreviousDirection = direction;
 						iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
 						ownSleep_ms(200);
@@ -1332,11 +1333,12 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 						
 						r_acc = 0.1;
 						r_wspeed = 0.0;
-						r_speed = 0.5;
+						r_speed = 0.15;
 						dPrint(1,"No Obstacle. Going forward (%f,%f,%f)", r_speed, r_wspeed, r_acc);
+						dPrint(1,"iMotionCtrl %p",iInterface.iMotionCtrl);
 						iPreviousDirection = DirectionForward;
 						iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
-						ownSleep_ms(200);
+						ownSleep_ms(20);
 					}
 					
 				} else if (iRobotState == RobotStateGoHome || RobotStateGoToStone) {
@@ -1417,6 +1419,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 									r_speed = MIN_SPEED;
 									r_wspeed = 0;
 									r_acc=0.15;
+									dPrint(1,"Driving to a target");
 									iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
 		                            ownSleep_ms(200);
 		                            iMotionState = StateTurning;
@@ -1438,6 +1441,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 									}									
 									r_wspeed = MAX(MIN(r_wspeed, MAX_WSPEED), -MAX_WSPEED);
 									               
+									dPrint(1,"Driving to a target");
 									iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
 									ownSleep_ms(200);
 								}	
@@ -1448,6 +1452,8 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 							
 							case StateTurning:
 							{
+								
+								dPrint(1,"Turning");
 								iInterface.iMotionCtrl->SetStop();
 								ownSleep_ms(200);
 									    
@@ -1466,6 +1472,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 		                            iMotionState = StateDriving;
 									continue;
 		                        } else {
+									dPrint(1,"Setspeed");
 		                            iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
 		                            ownSleep_ms(200);
 		                        }

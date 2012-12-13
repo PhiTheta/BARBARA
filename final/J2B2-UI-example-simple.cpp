@@ -58,7 +58,10 @@ int main(int argc, char *argv[])
   /////////////////////////////////////////////////////////////////////////////
   // At this point, perform any checks for required interfaces, and
   // dispatch control to your own application.
-
+while(true){
+j2b2.iMotionCtrl->SetSpeed(0.1,0,0.1);
+ownSleep_ms(20);
+}
   
   // Print notification that the application is about to exit.
   printf("\nExit.\n\n");
