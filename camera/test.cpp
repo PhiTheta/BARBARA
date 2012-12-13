@@ -120,6 +120,7 @@ int main( int argc, char* args[] )
 
     //Load the files
     if( load_files("scn.png") == false )
+    //if( load_files("Image.jpg") == false )
     {
         return 1;
     }
