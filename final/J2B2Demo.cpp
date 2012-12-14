@@ -989,45 +989,7 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
       SDL_BlitSurface(image, NULL, screen, &rcDest);
       SDL_FreeSurface(image);
     }
-    
-    // Draw the LaserScan
-    if (iLastLaserDistanceArray.size()) {
-      float min_d = 1000;
-      float scale = 160; ///< scales from meters to screen pixels
-      int min_x_end = 0;
-      int min_y_end = 0;
-      const int x_origin = window_width/2; ///< origin of laser measurement
-      const int y_origin = window_height; ///< origim of laser meas
-      const int dasize = iLastLaserDistanceArray.size();
-      for(int i = 0; i < dasize; ++i) {
-        const MaCI::Ranging::TDistance &measurement = iLastLaserDistanceArray[i];
-        int pix_x = x_origin - (int)(scale * measurement.distance * sin(measurement.angle)); 
-        int pix_y = y_origin - (int)(scale * measurement.distance * cos(measurement.angle)); 
-        if (pix_x >= 0 && pix_x < window_width && 
-            pix_y >= 0 && pix_y < window_height) {
-          pixelRGBA(screen, pix_x, pix_y, 255, 0, 0, 150);
-          if (measurement.distance < min_d) {
-            min_d = measurement.distance;
-            min_x_end = pix_x;
-            min_y_end = pix_y;
-          }
-        }
-      }
-      filledCircleRGBA(screen, x_origin, y_origin,
-                       (int)(0.2 * scale), 0, 255, 255, 255);
       
-      //Example for drawing a line using SDL: (The -1 in X origin is
-      //to lift the line above border, so lines drawn directly towards
-      //X axis would be visible too)
-      lineRGBA(screen,
-               x_origin, 
-               y_origin-1,
-               min_x_end,
-               min_y_end,
-               255, 255, 0, 255);
-      
-    }
-    
     
     // Draw the Map
     if (iMap.size() > 0) {
@@ -1044,10 +1006,35 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 			float center_x = rect.x+rect.w/2;
 			float center_y = rect.y+rect.h/2;
 			float m = 50;	//Multiplier for euclidean coordinates
-			float m_a = 10; //Multiplier for angle
+			float m_a = 10; //Robot radius
 		
 			SDL_FillRect(screen , &rect , SDL_MapRGB(screen->format , 255 , 255 , 255 ) );
 		  
+			
+			float robot_x = center_x+(pose->y-iBasePoint.x)*m;
+			float robot_y = center_y+(pose->x-iBasePoint.y)*m;
+			
+			float laser_x = robot_x - iLaserPosition.x*sin(-pose->a)*m;
+			float laser_y = robot_y + iLaserPosition.x*cos(-pose->a)*m;
+			
+			vector<TPoint> laserPoints;
+			for(EACH_IN_i(iLastLaserDistanceArray)) {
+				float laser_end_x = laser_x - i->distance*sin(-i->angle-pose->a)*m;
+				float laser_end_y = laser_y + i->distance*cos(-i->angle-pose->a)*m;
+				TPoint laser;
+				laser.x = laser_end_x;
+				laser.y = laser_end_y;
+				laserPoints.push_back(laser);
+				lineRGBA(screen, laser_x, laser_y, laser_end_x, laser_end_y, 255, 215, 215, 255);
+			}
+			
+			float pointer_end_x = robot_x - m_a*sin(-pose->a);
+			float pointer_end_y = robot_y + m_a*cos(-pose->a);
+			filledCircleRGBA(screen, robot_x, robot_y, (int)10, 0, 255, 0, 255);
+			lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 0, 0, 0, 255);
+
+			filledCircleRGBA(screen, laser_x, laser_y, (int)2, 255, 0, 255, 255);
+			
 			//Lock();
 			for (vector<TPoint>::iterator iterator = iMap.begin(); iterator < iMap.end(); iterator++) {
 				TPoint point = *iterator;
@@ -1056,13 +1043,10 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 			}
 			//Unlock(); 
 			
-			float robot_x = center_x+(pose->y-iBasePoint.x)*m;
-			float robot_y = center_y+(pose->x-iBasePoint.y)*m;
-			float pointer_end_x = robot_x - m_a*sin(-pose->a);
-			float pointer_end_y = robot_y + m_a*cos(-pose->a);
-			filledCircleRGBA(screen, robot_x, robot_y, (int)10, 0, 255, 0, 255);
-			lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 0, 0, 0, 255);
-
+			for (vector<TPoint>::iterator iterator = laserPoints.begin(); iterator < laserPoints.end(); iterator++) {
+				TPoint laser = *iterator;
+				filledCircleRGBA(screen, laser.x, laser.y, (int)2, 255, 0, 0, 255);
+			}
 		}
 		
 		
