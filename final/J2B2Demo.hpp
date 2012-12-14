@@ -22,9 +22,9 @@
 
 
 typedef enum {
-	StateIdle = 0,
-	StateDriving,
-	StateTurning
+	MotionStateIdle = 0,
+	MotionStateDriving,
+	MotionStateTurning
 } MotionState;
 
 typedef enum {
@@ -45,6 +45,11 @@ typedef enum {
 	DirectionLeft = 1,
 	DirectionRight = 2
 } TurnDirection;
+
+struct TPoint {
+	float x, y;
+};
+	
 
 class CJ2B2Demo : private gim::CSync, 
                   private gim::CThread
@@ -112,21 +117,24 @@ private:
   ISGridPose2D iOdometryPose;
   ISGridPose2D iPreviousOdometryPose;
   vector<ISGridPoint> iGridMap;
+  vector<TPoint> iMap;
   vector<ISGridPoint> iPreviousLaserData;
-  vector<ISGridPose2D> iSmoothAstarPath;
+  vector<MaCI::Position::TPose2D> iSmoothAstarPath;
   vector<node> iAstarPath;
-  ISGridPoint iNextWaypoint;
+  TPoint iNextWaypoint;
   volatile bool iPauseOn;
   volatile bool iHasPlan;
   int iIter;
+  TPoint iBasePoint;
   TurnDirection iPreviousDirection;
   MotionState iMotionState;
   InternalState iRobotState;
   InternalState iPreviousRobotState;
   void updateMap(ISGridPose2D pose, vector<ISGridPoint> scans);
+  void updateMap(const MaCI::Position::TPose2D *pose);
   void runSLAM();
   ISGridPose2D gridPoseFromTPose(const MaCI::Position::TPose2D *pose);
-  vector<ISGridPose2D> smooth(vector<node> astar_path, float weight_data, float weight_smooth, float tolerance);
+  vector<MaCI::Position::TPose2D> smooth(vector<node> astar_path, float weight_data, float weight_smooth, float tolerance);
   vector<ISGridPoint> getEuclideanLaserData();
   void mapFromGridMap(vector<ISGridPoint> map, int **output);
   void analyzeCamera();

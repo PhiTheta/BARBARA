@@ -96,67 +96,56 @@ ISGridPose2D CJ2B2Demo::gridPoseFromTPose(const MaCI::Position::TPose2D *pose)
 
 void CJ2B2Demo::analyzeCamera()
 {
-		dPrint(1, "ACHTUNG!!!! SIMULATED OBSTACLE!!!");
+	dPrint(1, "ACHTUNG!!!! SIMULATED WAYPOINT!!!");
 	iNextWaypoint.x = 15;
 	iNextWaypoint.y = 0;
-  
-  
-  
-  iRobotState = RobotStateGoToStone;
+	iRobotState = RobotStateGoToStone;
 	return;
 	
 	
 	dPrint(1, "Analyzing camera image");
     if (iLastCameraImage.GetImageDataType() == MaCI::Image::KImageDataJPEG &&
         iLastCameraImage.GetImageDataPtr() != NULL) {
-      SDL_Surface *surface = NULL;
-      SDL_RWops *rw = NULL;
-      SDL_Rect rcDest = {0,0,0,0};
-      
-      MaCI::Image::CImageContainer container;
-      iLastCameraImage.WriteImageToFile("Image.jpg");
-      Lock();
-      container.Copy(iLastCameraImage);
-      container.WriteImageToFile ("CopiedImage.jpg");
-      
-      Unlock();
-      exit(1);
-      rw = SDL_RWFromMem((void*)container.GetImageDataPtr(), 
-                         container.GetImageDataSize());               
-                         
-      surface = IMG_LoadJPG_RW(rw);
-      if (surface == NULL) {
-		  dPrint(1, "Could not get an image");
-		  return;
-	  }
-      //SDL_BlitSurface(surface, NULL, mainScreen, &rcDest);
-
+		SDL_Surface *surface = NULL;
+		SDL_RWops *rw = NULL;
+		
+		MaCI::Image::CImageContainer container;
+		iLastCameraImage.WriteImageToFile("Image.jpg");
+		Lock();
+		container.Copy(iLastCameraImage);
+		container.WriteImageToFile ("CopiedImage.jpg");
+		
+		Unlock();
+		exit(1);
+		rw = SDL_RWFromMem((void*)container.GetImageDataPtr(), container.GetImageDataSize());               
+						 
+		surface = IMG_LoadJPG_RW(rw);
+		if (surface == NULL) {
+			dPrint(1, "Could not get an image");
+			return;
+		}
+		//SDL_BlitSurface(surface, NULL, mainScreen, &rcDest);
+		
 		dPrint(1, "Got an image");
       
-      Camera_Obstacle_Alarm answer = Find_Object(surface, 1);	//1 - red, 2 - blue
-      
-      if (answer.Red_Obstacle_Flag) {
-		  
-		  
-		  Camera_Distance distance = Postion_Object(answer.c_x, answer.c_y);
-		  
-		  distance.distance = fabs(distance.distance);
-		  
+		Camera_Obstacle_Alarm answer = Find_Object(surface, 1);	//1 - red, 2 - blue
+		
+		if (answer.Red_Obstacle_Flag) {
+			Camera_Distance distance = Postion_Object(answer.c_x, answer.c_y);
+			distance.distance = fabs(distance.distance);
 			dPrint(1, "Found something (distance %f; angle %f)", distance.distance, distance.angle);
-		  
-		  //Create a waypoint here
-		  //In Universal frame
-		  iNextWaypoint = laserToWorld(distance.distance, distance.angle, iRobotPose, iLaserPosition.x, X_RES, Y_RES);
-		  
-		  iRobotState = RobotStateGoToStone;
-	  }
+			
+			//Create a waypoint here
+			//In Universal frame
+			//iNextWaypoint = laserToWorld(distance.distance, distance.angle, iRobotPose, iLaserPosition.x, X_RES, Y_RES);
+			iRobotState = RobotStateGoToStone;
+		}
 		//SDL_FreeSurface(surface);
-  
-    }
-    else {
+		
+	}
+	else {
 		dPrint(1, "Image not available");
 	}
-  
 }
 
 vector<ISGridPoint> CJ2B2Demo::getEuclideanLaserData()
@@ -189,14 +178,16 @@ void CJ2B2Demo::mapFromGridMap(vector<ISGridPoint> map, int **output)
 	}
 }
 
-vector<ISGridPose2D> CJ2B2Demo::smooth(vector<node> astar_path, float weight_data, float weight_smooth, float tolerance)
+vector<MaCI::Position::TPose2D> CJ2B2Demo::smooth(vector<node> astar_path, float weight_data, float weight_smooth, float tolerance)
 {
-	vector<ISGridPose2D> smooth_astar_path, original_astar_path;
+	using namespace MaCI::Position;
+	
+	vector<TPose2D> smooth_astar_path, original_astar_path;
 	
 	//Make a Copy of X and Y
 	for(unsigned int i = 0; i < astar_path.size(); i++) {
 		node originalNode = astar_path.at(i);
-		ISGridPose2D pose;
+		TPose2D pose;
 		pose.x = (float)originalNode.x;
 		pose.y = (float)originalNode.y;
 		smooth_astar_path.push_back(pose);
@@ -204,7 +195,7 @@ vector<ISGridPose2D> CJ2B2Demo::smooth(vector<node> astar_path, float weight_dat
 	}
 	
 	float change = tolerance;
-	ISGridPose2D aux_i, new_point, aux_i1, aux_i2, initial_XY;
+	TPose2D aux_i, new_point, aux_i1, aux_i2, initial_XY;
 	
 	while(change >= tolerance) {
 		change = 0.0;					
@@ -241,20 +232,20 @@ void CJ2B2Demo::runSLAM()
 		if (iFirstSLAMAttempt) {
 			//Get the readings and just save them without any SLAM
 			
-			int posSeq = -1;
-			CPositionData pd;
-			if (iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000)) {
-				const TPose2D *pose = pd.GetPose2D();
-				if (pose) {
-					iRobotPose = gridPoseFromTPose(pose);
+			//int posSeq = -1;
+			//CPositionData pd;
+			//if (iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000)) {
+				//const TPose2D *pose = pd.GetPose2D();
+				//if (pose) {
+					//iRobotPose = gridPoseFromTPose(pose);
 					iFirstSLAMAttempt = false;
-					dPrint(1, "Getting very first odometry %d,%d,%f", iRobotPose.x,iRobotPose.y,iRobotPose.angle);
+					//dPrint(1, "Getting very first odometry %d,%d,%f", iRobotPose.x,iRobotPose.y,iRobotPose.angle);
 					
-					vector<ISGridPoint> euclideanLaserData = getEuclideanLaserData();
-					updateMap(iRobotPose, euclideanLaserData);
-					iPreviousLaserData = euclideanLaserData;
-				}
-			}
+					//vector<ISGridPoint> euclideanLaserData = getEuclideanLaserData();
+					//updateMap(iRobotPose, euclideanLaserData);
+					//iPreviousLaserData = euclideanLaserData;
+				//}
+			//}
 			
 			return;
 		}
@@ -264,18 +255,21 @@ void CJ2B2Demo::runSLAM()
 		if (iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, iLastOdometryTimestamp.GetGimTime())) {
 			
 			const TPose2D *pose1 = pd.GetPose2D();	
-			ISGridPose2D previousPose = gridPoseFromTPose(pose1);
+			//ISGridPose2D previousPose = gridPoseFromTPose(pose1);
 			
-	//iIter++;
-	//if (iIter < 10) {
-		//return;
-	//}
-	//iIter = 0;
 			if (iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, iLastLaserTimestamp.GetGimTime())) {
 				
 				
 				const TPose2D *pose2 = pd.GetPose2D();
 				
+				
+				if (fabs(pose1->a-pose2->a) < 0.00001) {
+					updateMap(pose2);
+					iLastOdometryTimestamp = iLastLaserTimestamp;
+				}
+				
+				
+				/*
 				if (!iPauseOn) dPrint(1,"Previous time %f Current time %f", iLastOdometryTimestamp.GetGimTime().getTimeInSeconds(), iLastLaserTimestamp.GetGimTime().getTimeInSeconds());
 				
 				iPreviousOdometryPose = previousPose;
@@ -373,11 +367,47 @@ void CJ2B2Demo::runSLAM()
 				iRobotPose = correctedPose;
 				iPreviousLaserData = euclideanLaserData;
 				
-				  
+				 
+		 */ 
 			 }
 		 }
 	}
 }
+
+void CJ2B2Demo::updateMap(const MaCI::Position::TPose2D *pose)
+{
+	for(EACH_IN_i(iLastLaserDistanceArray)) {
+		TPoint point;
+		
+		//Laser origin coordinates
+		point.x = i->distance*sin(i->angle);
+		point.y = i->distance*cos(i->angle);
+		
+		//Robot origin coordinates
+		point.y += iLaserPosition.x;
+		
+		//World coordinates
+		TPoint worldPoint;
+		worldPoint.x = point.x*cos(pose->a)+point.y*sin(pose->a)+pose->y;
+		worldPoint.y = -point.x*sin(pose->a)+point.y*cos(pose->a)+pose->x;
+		
+		bool exists = false;
+		for (vector<TPoint>::iterator iterator = iMap.begin(); iterator < iMap.end(); iterator++) {
+			TPoint testPoint = *iterator;
+			if (fabs(worldPoint.x-testPoint.x) < 0.01 && fabs(worldPoint.y-testPoint.y) < 0.01) {
+				exists = true;
+				break;
+			}
+		}
+		
+		if (!exists) {
+			Lock();
+			iMap.push_back(worldPoint);
+			Unlock();
+		}
+	}
+}
+	
 
 void CJ2B2Demo::updateMap(ISGridPose2D pose, vector<ISGridPoint> scans)
 {
@@ -417,6 +447,7 @@ CJ2B2Demo::CJ2B2Demo(CJ2B2Client &aInterface)
     iOdometryPose(),
     iPreviousOdometryPose(),
     iGridMap(),
+    iMap(),
     iPreviousLaserData(),
 	iSmoothAstarPath(),
 	iAstarPath(),
@@ -424,8 +455,9 @@ CJ2B2Demo::CJ2B2Demo(CJ2B2Client &aInterface)
     iPauseOn(true),
     iHasPlan(false),
     iIter(0),
+    iBasePoint(),
     iPreviousDirection(DirectionForward),
-    iMotionState(StateIdle),
+    iMotionState(MotionStateIdle),
     iRobotState(RobotStateIdle),
     iPreviousRobotState(RobotStateIdle)
 {
@@ -867,7 +899,6 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
       // Only send if the motion demo is not active (it is a
       // standalone demo controlling the robot, if it is active,
       // sending commands to robot would only mess up things)
-      dPrint(1,"Setspeed");
       iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
       speedcommand_last_sent = ownTime_get_ms();
     }
@@ -957,8 +988,44 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
     
     
     // Draw the Map
-    if (iGridMap.size() > 0) {
+    if (iMap.size() > 0) {
 		
+		MaCI::Position::CPositionData pd;
+		if (iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, iLastLaserTimestamp.GetGimTime())) {
+			const MaCI::Position::TPose2D *pose = pd.GetPose2D();
+			
+			SDL_Rect rect;
+			rect.x = screen->w- 450;
+			rect.y = 130 ;
+			rect.w = 450 ;  // Set the width of this rectangle area
+			rect.h = 450 ;  // Set the height of this rectangle area
+			float center_x = rect.x+rect.w/2;
+			float center_y = rect.y+rect.h/2;
+			float m = 50;	//Multiplier for euclidean coordinates
+			float m_a = 10; //Multiplier for angle
+		
+			SDL_FillRect(screen , &rect , SDL_MapRGB(screen->format , 255 , 255 , 255 ) );
+		  
+			//Lock();
+			for (vector<TPoint>::iterator iterator = iMap.begin(); iterator < iMap.end(); iterator++) {
+				TPoint point = *iterator;
+				//filledCircleRGBA(screen, rect.x+rect.w/2-point.x*m, rect.y+rect.h/2-point.y*m, (int)1, 0, 0, 255, 255);
+				filledCircleRGBA(screen, center_x+(point.x-iBasePoint.x)*m, center_y+(point.y-iBasePoint.y)*m, (int)1, 0, 0, 255, 255);
+			}
+			//Unlock(); 
+			
+			float robot_x = center_x+(pose->y-iBasePoint.x)*m;
+			float robot_y = center_y+(pose->x-iBasePoint.y)*m;
+			float pointer_end_x = robot_x - m_a*sin(-pose->a);
+			float pointer_end_y = robot_y + m_a*cos(-pose->a);
+			filledCircleRGBA(screen, robot_x, robot_y, (int)10, 0, 255, 0, 255);
+			lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 0, 0, 0, 255);
+
+		}
+		
+		
+		/////////////////////////////////
+		/*
 		SDL_Rect rect;
 		rect.x = screen->w- 450;
 		rect.y = 130 ;
@@ -993,6 +1060,7 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 		float pointer_end_x = robot_x + x_w*cos(iOdometryPose.angle);
 		float pointer_end_y = robot_y - y_h*sin(iOdometryPose.angle);
 		lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 255, 0, 0, 255);
+		* */
 	}
     
     // Print help
@@ -1212,13 +1280,9 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
   const float angspeed = M_PI / 4.0;
   int step = 0;
   int posSeq = -1;
-  int cnt = 60;
-  float r_acc = 0.2;
-  float r_speed = 0.0;
-  float r_wspeed = 0.5;
   float K_alpha = 0.05;
   float proximityAngleLimit = M_PI/2.5;
-  iRobotState = RobotStateWander;
+  
   
   if (iMotionThreadActive) {
     dPrint(1,"MotionDemo already active! Will not start again.");
@@ -1228,31 +1292,34 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
     dPrint(3,"MotionDemoThread starting...");
     iMotionThreadActive = true;
 
+	MaCI::Position::CPositionData pd;
     const MaCI::Position::TPose2D *mypos = new MaCI::Position::TPose2D::TPose2D(0,0,0);
-	
-	 iInterface.iPositionOdometry->SetPosition(*mypos);
+	iInterface.iPositionOdometry->SetPosition(*mypos);
+	iRobotState = RobotStateWander;
+	int cnt = 60;
+	float r_acc = 0.2;
+	float r_speed = 0.0;
+	float r_wspeed = 0.5;
+	if (iInterface.iPositionOdometry) {
+		iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000);
+		const TPose2D *pose = pd.GetPose2D();
+		iBasePoint.x = pose->y;
+		iBasePoint.y = pose->x;
+	}
    
-
 	iInterface.iBehaviourCtrl->SetStart();
 	
-	
-	int wayPnumber=0;
 	float x_next_stop_meters,Ax_next_stop_meters;
 	float y_next_stop_meters,Ay_next_stop_meters;
 
 	int iterations = 0;
 	while(iDemoActive && iMotionThreadActive && (aIterations == -1 || iterations < aIterations) && iRobotState != RobotStateShutdown) {
-		// Got MotionCtrl?
 		if (iInterface.iMotionCtrl) {
 			if (iInterface.iPositionOdometry) {
-					
-				MaCI::Position::CPositionData pd;
 				iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000);
 				const TPose2D *pose = pd.GetPose2D();
-				ISGridPose2D myPose = gridPoseFromTPose(pose);
-				
-					dPrint(1, "ODO %f %f %f", pose->x, pose->y, pose->a);
-					dPrint(1, "I am at %d,%d looking %f", myPose.x, myPose.y, myPose.angle);
+				//iPose = pd.GetPose2D();
+				dPrint(1, "ODO %f %f %f", pose->x, pose->y, pose->a);
 					
 				if (iRobotState == RobotStateMoveAway) {
 					dPrint(1, "Moving away from the base");
@@ -1261,7 +1328,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 					r_wspeed = 0;
 					iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
 					ownSleep_ms(20);
-					if (abs(myPose.x) > 7 || abs(myPose.y) > 7) {
+					if (fabs(iBasePoint.x-pose->y) > 0.2 || fabs(iBasePoint.y-pose->x) > 0.2) {
 						iInterface.iMotionCtrl->SetStop();
 						iRobotState = RobotStateShutdown;
 						dPrint(1, "Mission complete. Good bye!");
@@ -1273,6 +1340,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 			        ownSleep_ms(200);	
 			        if (open) {
 						iRobotState = RobotStateMoveAway;
+						continue;
 					}
 				}	
 				else if (iRobotState == RobotStateCloseGripper) {
@@ -1280,9 +1348,9 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 					bool closed = iInterface.iServoCtrl->SetPosition(M_PI/3-M_PI/20, KServoUserServo_0);
 			        ownSleep_ms(200);	
 			        if (closed) {
-						iNextWaypoint.x = 0;
-						iNextWaypoint.y = 0;
+						iNextWaypoint = iBasePoint;
 						iRobotState = RobotStateGoHome;
+						continue;
 					}
 				}
 				else if (iRobotState == RobotStateAvoidObstacle) {
@@ -1317,8 +1385,8 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 						ownSleep_ms(20);
 					}
 					else {
-						//iInterface.iMotionCtrl->SetStop();
-						//ownSleep_ms(20);
+						iInterface.iMotionCtrl->SetStop();
+						ownSleep_ms(20);
 						iRobotState = iPreviousRobotState;
 						continue;
 					}
@@ -1343,14 +1411,13 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 					bool obstacle = distance <= proximityAlertLimit && distance >= 0;
 					
 					if (obstacle) {
-						//iInterface.iMotionCtrl->SetStop();
-						//ownSleep_ms(20);
+						iInterface.iMotionCtrl->SetStop();
+						ownSleep_ms(20);
 						iPreviousRobotState = iRobotState;
 						iRobotState = RobotStateAvoidObstacle;
 						continue;
 					}
 					else {
-						
 						if (cnt++ >= 60) {
 							cnt = 0;
 							analyzeCamera();
@@ -1368,73 +1435,62 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 					
 				} else if (iRobotState == RobotStateGoHome || RobotStateGoToStone) {
 					
-					dPrint(1, "Navigating to %d, %d", iNextWaypoint.x,iNextWaypoint.y);
+					dPrint(1, "Navigating to %f, %f", iNextWaypoint.x,iNextWaypoint.y);
 					
 				     ////Run A*
 					if (!iHasPlan) {
-						
-						dPrint(1,"Present X: %d, Present Y: %d", myPose.x, myPose.y );	
-						myPose.angle = 0.0f;
 					
 						int *searchMap = new int[MAP_COLS*MAP_ROWS];
 						mapFromGridMap(iGridMap, &searchMap);
+						
+						//Current robot position in grid coordinates
+						int grid_x = round(pose->x/X_RES);
+						int grid_y = round(pose->y/Y_RES);
+						
+						//Waypoint position in grid coordinates
+						int p_x = round(iNextWaypoint.x/X_RES);
+						int p_y = round(iNextWaypoint.y/Y_RES);
 					
 						pathplan2 plan;
-						iAstarPath = plan.get_graph(searchMap,MAP_COLS,MAP_ROWS,myPose.x,myPose.y,iNextWaypoint.x,iNextWaypoint.y);
+						iAstarPath = plan.get_graph(searchMap,MAP_COLS,MAP_ROWS,grid_x,grid_y,p_x,p_y);
 										
 						iSmoothAstarPath = smooth(iAstarPath,WEIGHT_DATA,WEIGHT_SMOOTH,A_TOLERANCE);
 						
-						//for(unsigned int i = 0; i < path.size(); i++) {
-							//node aaa = path.at(i);
-							//pose2D bbb = smooth_astar_path.at(i);
-							////dPrint(1, "x: %d y: %d F: %f G: %f H: %f parentx: %d parenty: %d", aaa.x, aaa.y,  aaa.F, aaa.G, aaa.H, aaa.px, aaa.py);
-							////dPrint(1,"x: %d , newX: %f , y: %d , newy: %f", aaa.x, bbb.x, aaa.y, bbb.y);
-						//}
-						
 						iHasPlan = true;
+						
+						//Start with node 1, because node 0 is current position;
 						step = 1;
 					}
 		
 	                if (step < (int)iSmoothAstarPath.size()-1) {
-						   
+						       
+						dPrint(1,"Driving to a intermediate waypoint %d of %d", step, iSmoothAstarPath.size());
 						node present = iAstarPath.at(step);
 						Ax_next_stop_meters = present.x * X_RES;
 						Ay_next_stop_meters = present.y * Y_RES;
 						
-						ISGridPose2D next_stop = iSmoothAstarPath.at(step+1);
+						TPose2D next_stop = iSmoothAstarPath.at(step+1);
 						x_next_stop_meters = next_stop.x * X_RES;
 						y_next_stop_meters = next_stop.y * Y_RES;
-						//dPrint(1,"next_stop.x: %d, next_stop.y: %d", next_stop.x,next_stop.y);
 						
-						dPrint(1,"\n\n\n\n");
-						if (iMotionState == StateIdle) { 
-							dPrint(1,"State: Idle");
+						if (iMotionState == MotionStateIdle) { 
+							dPrint(1,"Motion Control State: Idle");
 						}
-						else if (iMotionState == StateDriving) { 
-							dPrint(1,"State: Driving");
+						else if (iMotionState == MotionStateDriving) { 
+							dPrint(1,"Motion Control State: Driving");
 						}
-						else if (iMotionState == StateTurning) { 
-							dPrint(1,"State: Turning");
+						else if (iMotionState == MotionStateTurning) { 
+							dPrint(1,"Motion Control State: Turning");
 						}
 						
-						//dPrint(1,"x: %.2f->%.2f", x_present, x_next_stop_meters);
-						//dPrint(1,"y: %.2f->%.2f", y_present, y_next_stop_meters);
-						//dPrint(1,"delta: %.2f, %.2f", dx, dy);
-						//dPrint(1,"rho: %f",rho);
-						//dPrint(1,"alpha is: %f",alpha);
-						//dPrint(1,"a_present is: %f",a_present);
-						//dPrint(1,"v: %.2f; w: %.2f; a: %.2f",r_speed, r_wspeed, r_acc);
-						//dPrint(1,"Step: %d", step);
-						//dPrint(1,"Way Point %d",wayPnumber);
+						dPrint(1, "Intermediate waypoint %f, %f. Now at %f, %f",x_next_stop_meters, y_next_stop_meters,pose->x,pose->y);
 						
-						dPrint(1, "IN METERS FROM %f, %f TO %f, %f",pose->x,pose->y, x_next_stop_meters, y_next_stop_meters);
+						float dx = x_next_stop_meters - pose->x;
+						float dy = y_next_stop_meters - pose->y;
 						
-						float dx = x_next_stop_meters - (pose->x);
-						float dy = y_next_stop_meters - (pose->y);
-						
-						float alpha = atan2(dy, dx)-myPose.angle;
+						float alpha = atan2(dy, dx)-pose->a;
 	                    alpha = truncate(alpha);
-						dPrint(1, "ANG ERR %f", alpha);
+						dPrint(1, "Angle error %f", alpha);
 								
 						double rho = sqrt(dx*dx + dy*dy);
 						if (rho <= DIST_MARGIN) {
@@ -1443,56 +1499,41 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 						}
 						
 						switch (iMotionState) {
-							case StateDriving:
+							case MotionStateDriving:
 							{
+								//If angle is to large, rotate at one place instead of driving
 								if (fabs(alpha) > 1.3) {
 									iInterface.iMotionCtrl->SetStop();
-									iMotionState = StateTurning;
+									ownSleep_ms(20);
+									iMotionState = MotionStateTurning;
 									continue;
 								}
 								
+								dPrint(1,"Going forward");
 								
-								double rho = sqrt(dx*dx + dy*dy);
-								if (rho <= DIST_MARGIN) {
-		                            step++; 
-									iMotionState = StateTurning;
-									r_speed = 0;
-									r_wspeed = 0;
-									r_acc=0.15;
-									dPrint(1,"Driving to a target");
-									iInterface.iMotionCtrl->SetStop();
-									ownSleep_ms(20); 
-									//iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
-		                            //ownSleep_ms(20);
-		                            iMotionState = StateTurning;
-									continue;
-								} 
+								r_speed = 0.05;
+								r_wspeed = K_alpha * alpha;
+								
+								if (fabs(alpha) > M_PI_2) {
+									r_speed *= -1;
+								}
+								
+								if (r_speed >= 0.0 || r_speed == -0.0) {
+									r_speed = MAX(MIN(r_speed, MAX_SPEED), MIN_SPEED);
+								}
 								else {
-									r_speed = 0.05;
-									r_wspeed = K_alpha * alpha;
-									
-									if (fabs(alpha) > M_PI_2) {
-										r_speed *= -1;
-									}
-									
-									if (r_speed >= 0.0 || r_speed == -0.0) {
-										r_speed = MAX(MIN(r_speed, MAX_SPEED), MIN_SPEED);
-									}
-									else {
-										r_speed = MIN(MAX(r_speed, -MAX_SPEED), -MIN_SPEED);	
-									}									
-									r_wspeed = MAX(MIN(r_wspeed, MAX_WSPEED), -MAX_WSPEED);
-									               
-									dPrint(1,"Driving to a target");
-									iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
-									ownSleep_ms(20);
-								}	
+									r_speed = MIN(MAX(r_speed, -MAX_SPEED), -MIN_SPEED);	
+								}									
+								r_wspeed = MAX(MIN(r_wspeed, MAX_WSPEED), -MAX_WSPEED);
+								           
+								iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
+								ownSleep_ms(20);
 							}
 							break;
 							
 							
 							
-							case StateTurning:
+							case MotionStateTurning:
 							{
 								
 								dPrint(1,"Turning");
@@ -1506,11 +1547,10 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 									r_wspeed = MIN(MAX(r_wspeed, -MAX_WSPEED), -MIN_WSPEED);	
 								}
 								
-								dPrint(1, "ANG ERR %f", alpha);
 		                        if(fabs(alpha) < ANGLE_MARGIN) {
 		                            iInterface.iMotionCtrl->SetStop();
 		                            ownSleep_ms(20);
-		                            iMotionState = StateDriving;
+		                            iMotionState = MotionStateDriving;
 									continue;
 		                        } else {
 		                            iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
@@ -1519,14 +1559,16 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 							}
 				            break;                
 				                
-			                case StateIdle:
-								iMotionState = StateTurning;
-								//Shout!
+			                case MotionStateIdle:
+								dPrint(1,"Starting motion");
+								iMotionState = MotionStateTurning;
 							break;
 							}
 					}
 					else {
+						dPrint(1,"Waypoint reached");
 						iHasPlan = false;
+						iMotionState = MotionStateIdle;
 						if (iRobotState == RobotStateGoToStone) {
 							iRobotState = RobotStateCloseGripper;
 						}
@@ -1621,7 +1663,7 @@ int CJ2B2Demo::RunSensorsDemo(int aIterations)
         iLastLaserTimestamp = laserTimestamp;
         Unlock();
         
-        //runSLAM();
+        runSLAM();
         
         // Check distances received.
         //
