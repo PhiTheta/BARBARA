@@ -298,7 +298,7 @@ void CJ2B2Demo::runSLAM()
 				
 				
 				if (fabs(pose1->a-pose2->a) < 0.00001) {
-					updateMap(pose2);
+					updateMap(pose2, true);
 					iLastOdometryTimestamp = iLastLaserTimestamp;
 				}
 				
@@ -408,8 +408,16 @@ void CJ2B2Demo::runSLAM()
 	}
 }
 
-void CJ2B2Demo::updateMap(const MaCI::Position::TPose2D *pose)
+void CJ2B2Demo::updateMap(const MaCI::Position::TPose2D *pose, bool eraseUntrustedPoints)
 {
+	TPoint me;
+	me.x = pose->y;
+	me.y = pose->x;
+		
+	TPoint lidarPoint;
+	lidarPoint.x = iLaserPosition.x*sin(pose->a)+me.x;
+	lidarPoint.y = iLaserPosition.x*cos(pose->a)+me.y;
+	
 	for(EACH_IN_i(iLastLaserDistanceArray)) {
 		TPoint point;
 		
@@ -422,13 +430,13 @@ void CJ2B2Demo::updateMap(const MaCI::Position::TPose2D *pose)
 		
 		//World coordinates
 		TPoint worldPoint;
-		worldPoint.x = point.x*cos(pose->a)+point.y*sin(pose->a)+pose->y;
-		worldPoint.y = -point.x*sin(pose->a)+point.y*cos(pose->a)+pose->x;
+		worldPoint.x = point.x*cos(pose->a)+point.y*sin(pose->a)+me.x;
+		worldPoint.y = -point.x*sin(pose->a)+point.y*cos(pose->a)+me.y;
 		
 		bool exists = false;
 		for (vector<TPoint>::iterator iterator = iMap.begin(); iterator < iMap.end(); iterator++) {
-			TPoint testPoint = *iterator;
-			if (fabs(worldPoint.x-testPoint.x) < 0.01 && fabs(worldPoint.y-testPoint.y) < 0.01) {
+			TPoint mapPoint = *iterator;
+			if (fabs(worldPoint.x-mapPoint.x) < 0.01 && fabs(worldPoint.y-mapPoint.y) < 0.01) {
 				exists = true;
 				break;
 			}
@@ -437,8 +445,28 @@ void CJ2B2Demo::updateMap(const MaCI::Position::TPose2D *pose)
 		if (!exists) {
 			Lock();
 			iMap.push_back(worldPoint);
+			
+			if (eraseUntrustedPoints) {
+				//If obstacle lies on the laser point, eliminate it
+				for (vector<TPoint>::iterator iterator = iMap.begin(); iterator < iMap.end(); iterator++) {
+					TPoint mapPoint = *iterator;
+					if (fabs(worldPoint.x-lidarPoint.x) > 0.0001) {
+						float b = (worldPoint.x*lidarPoint.y-lidarPoint.x*worldPoint.y)/(worldPoint.x-lidarPoint.x);
+						float k = (lidarPoint.y-b)/lidarPoint.x;
+						if ((k*mapPoint.x+b)-mapPoint.y < 0.0001 &&
+						   ((mapPoint.x-lidarPoint.x > 0.001 && mapPoint.x-worldPoint.x < -0.001) || 
+						    (mapPoint.x-lidarPoint.x < -0.001 && mapPoint.x-worldPoint.x > 0.001)) &&
+						   ((mapPoint.y-lidarPoint.y > 0.001 && mapPoint.y-worldPoint.y < -0.001) ||
+						    (mapPoint.y-lidarPoint.y < -0.001 && mapPoint.y-worldPoint.y > 0.001))
+						 ) {
+							iMap.erase(iterator);
+						}
+					}
+				}
+			}
 			Unlock();
 		}
+		
 	}
 }
 	
@@ -1047,46 +1075,15 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 				TPoint laser = *iterator;
 				filledCircleRGBA(screen, laser.x, laser.y, (int)2, 255, 0, 0, 255);
 			}
+			
+			//Draw a star waypoints
+			if (iAstarPath.size() > 0) {
+				for (vector<node>::iterator iterator = iAstarPath.begin(); iterator < iAstarPath.end(); iterator++) {
+					node astar = *iterator;
+					filledCircleRGBA(screen, center_x+(astar.x-iBasePoint.x)*m, center_y+(astar.y-iBasePoint.y)*m, (int)1, 255, 0, 255, 255);
+				}
+			}
 		}
-		
-		
-		/////////////////////////////////
-		/*
-		SDL_Rect rect;
-		rect.x = screen->w- 450;
-		rect.y = 130 ;
-		rect.w = 450 ;  // Set the width of this rectangle area
-		rect.h = 370 ;  // Set the height of this rectangle area
-		
-		SDL_FillRect(screen , &rect , SDL_MapRGB(screen->format , 255 , 255 , 255 ) );
-      
-		float x_w = X_RES*rect.w/(float)MAP_WIDTH;
-		float y_h = Y_RES*rect.h/(float)MAP_HEIGHT;
-		
-		for (vector<ISGridPoint>::iterator iterator = iGridMap.begin(); iterator < iGridMap.end(); iterator++) {
-			ISGridPoint point = *iterator;
-			SDL_Rect pointRect;
-			pointRect.x = (point.x-10)*x_w+rect.x;
-			pointRect.y = (-point.y-10)*y_h+rect.y+rect.h;
-			pointRect.w = x_w;
-			pointRect.h = y_h;
-			SDL_FillRect(screen, &pointRect, SDL_MapRGB(screen->format, 0, 0, 255));
-		}
-		
-		SDL_Rect pointRect;
-		pointRect.x = (iRobotPose.x/X_RES-10)*x_w+rect.x;
-		pointRect.y = (-iRobotPose.y/Y_RES-10)*y_h+rect.y+rect.h;
-		pointRect.w = x_w*2;
-		pointRect.h = y_h*2;
-		SDL_FillRect(screen, &pointRect, SDL_MapRGB(screen->format, 0, 255,0));
-
-		//Draw pointer
-	    float robot_x = pointRect.x + x_w*0.75;
-	    float robot_y = pointRect.y + y_h*0.75;
-		float pointer_end_x = robot_x + x_w*cos(iOdometryPose.angle);
-		float pointer_end_y = robot_y - y_h*sin(iOdometryPose.angle);
-		lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 255, 0, 0, 255);
-		* */
 	}
     
     // Print help

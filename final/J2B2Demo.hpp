@@ -131,7 +131,7 @@ private:
   InternalState iRobotState;
   InternalState iPreviousRobotState;
   void updateMap(ISGridPose2D pose, vector<ISGridPoint> scans);
-  void updateMap(const MaCI::Position::TPose2D *pose);
+  void updateMap(const MaCI::Position::TPose2D *pose, bool eraseUntrustedPoints);
   void runSLAM();
   ISGridPose2D gridPoseFromTPose(const MaCI::Position::TPose2D *pose);
   vector<MaCI::Position::TPose2D> smooth(vector<node> astar_path, float weight_data, float weight_smooth, float tolerance);
