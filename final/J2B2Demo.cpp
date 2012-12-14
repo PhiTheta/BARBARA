@@ -97,7 +97,7 @@ ISGridPose2D CJ2B2Demo::gridPoseFromTPose(const MaCI::Position::TPose2D *pose)
 void CJ2B2Demo::analyzeCamera()
 {
 	dPrint(1, "ACHTUNG!!!! SIMULATED WAYPOINT!!!");
-	iNextWaypoint.x = 15;
+	iNextWaypoint.x = 1.5;
 	iNextWaypoint.y = 0;
 	iRobotState = RobotStateGoToStone;
 	return;
@@ -176,6 +176,40 @@ void CJ2B2Demo::mapFromGridMap(vector<ISGridPoint> map, int **output)
 			}
 		}
 	}
+}
+
+TPoint CJ2B2Demo::mapMatrixRepresentation(vector<TPoint> map, int **output)
+{
+	//Bias the map because it contains negative values also
+	//But AStar algorithm needs only non-negative values
+	float min_x = FLT_MAX;
+	float min_y = FLT_MAX;
+	for (vector<TPoint>::iterator iterator = map.begin(); iterator < map.end(); iterator++) {
+		TPoint point = *iterator;
+		if (point.x < min_x) min_x = point.x;
+		if (point.y < min_y) min_y = point.y;
+	}
+	
+	for (int i = 0; i < MAP_ROWS; i++) {
+		for (int j = 0; j < MAP_COLS; j++) {
+			int idx = i*MAP_COLS+j;
+			(*output)[idx] = 1;
+			for (vector<TPoint>::iterator iterator = map.begin(); iterator < map.end(); iterator++) {
+				TPoint point = *iterator;
+				//Biased by min_x, min_y
+				int x = round((point.x-min_x)/X_RES);
+				int y = round((point.y-min_y)/Y_RES);
+				if (x == j && y == i) {
+					(*output)[idx] = 0;
+					break;
+				}
+			}
+		}
+	}
+	TPoint bias;
+	bias.x = min_x;
+	bias.y = min_y;
+	return bias;
 }
 
 vector<MaCI::Position::TPose2D> CJ2B2Demo::smooth(vector<node> astar_path, float weight_data, float weight_smooth, float tolerance)
@@ -481,6 +515,14 @@ void CJ2B2Demo::Execute()
 	
 	 iInterface.iPositionOdometry->SetPosition(*mypos);
 	 
+	int posSeq = -1;
+	MaCI::Position::CPositionData pd;
+	if (iInterface.iPositionOdometry) {
+		iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000);
+		const MaCI::Position::TPose2D *pose = pd.GetPose2D();
+		iBasePoint.x = pose->y;
+		iBasePoint.y = pose->x;
+	}
 	 //EKF = new odoEKF();
 	 //EKF->setDt(0.2);
     
@@ -1441,18 +1483,32 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 					if (!iHasPlan) {
 					
 						int *searchMap = new int[MAP_COLS*MAP_ROWS];
-						mapFromGridMap(iGridMap, &searchMap);
+						TPoint bias = mapMatrixRepresentation(iMap, &searchMap);
+						
+						//Bias the map because it contains negative values also
+						//But AStar algorithm needs only non-negative values
+						
 						
 						//Current robot position in grid coordinates
-						int grid_x = round(pose->x/X_RES);
-						int grid_y = round(pose->y/Y_RES);
+						int grid_x = round((pose->y-bias.x)/X_RES);
+						int grid_y = round((pose->x-bias.y)/Y_RES);
 						
 						//Waypoint position in grid coordinates
-						int p_x = round(iNextWaypoint.x/X_RES);
-						int p_y = round(iNextWaypoint.y/Y_RES);
+						int p_x = round((iNextWaypoint.x-bias.x)/X_RES);
+						int p_y = round((iNextWaypoint.y-bias.y)/Y_RES);
+						
+						dPrint(1, "On the map navigating from %d, %d to %d, %d", grid_x,grid_y,p_x,p_y);
 					
 						pathplan2 plan;
 						iAstarPath = plan.get_graph(searchMap,MAP_COLS,MAP_ROWS,grid_x,grid_y,p_x,p_y);
+						
+						//Unbias nodes
+						for (int i = 0; i < (int)iAstarPath.size(); i++) {
+							node n = iAstarPath.at(i);
+							n.x += bias.x;
+							n.y += bias.y;
+							iAstarPath.at(i) = n;
+						}
 										
 						iSmoothAstarPath = smooth(iAstarPath,WEIGHT_DATA,WEIGHT_SMOOTH,A_TOLERANCE);
 						

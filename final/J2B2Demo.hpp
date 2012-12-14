@@ -137,6 +137,7 @@ private:
   vector<MaCI::Position::TPose2D> smooth(vector<node> astar_path, float weight_data, float weight_smooth, float tolerance);
   vector<ISGridPoint> getEuclideanLaserData();
   void mapFromGridMap(vector<ISGridPoint> map, int **output);
+  TPoint mapMatrixRepresentation(vector<TPoint> map, int **output);
   void analyzeCamera();
 };
 
