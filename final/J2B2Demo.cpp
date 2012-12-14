@@ -11,6 +11,7 @@
 #include <float.h>
 #include <iostream>
 #include <fstream>
+#include <ostream>
 
 using namespace std;
 bool skip_window=false;
@@ -96,7 +97,7 @@ ISGridPose2D CJ2B2Demo::gridPoseFromTPose(const MaCI::Position::TPose2D *pose)
 
 void CJ2B2Demo::analyzeCamera()
 {
-	dPrint(1, "ACHTUNG!!!! SIMULATED WAYPOINT!!!");
+	dPrintLCRed(1, "ACHTUNG!!!! SIMULATED WAYPOINT!!!");
 	iNextWaypoint.x = 1.5;
 	iNextWaypoint.y = 0;
 	iRobotState = RobotStateGoToStone;
@@ -186,9 +187,11 @@ TPoint CJ2B2Demo::mapMatrixRepresentation(vector<TPoint> map, int **output)
 	float min_y = FLT_MAX;
 	for (vector<TPoint>::iterator iterator = map.begin(); iterator < map.end(); iterator++) {
 		TPoint point = *iterator;
-		if (point.x < min_x) min_x = point.x;
-		if (point.y < min_y) min_y = point.y;
+		if ((min_x-point.x) > 0.0001) min_x = point.x;
+		if ((min_y-point.y) > 0.0001) min_y = point.y;
 	}
+	//min_x = ceil(min_x);
+	//min_y = ceil(min_y);
 	
 	for (int i = 0; i < MAP_ROWS; i++) {
 		for (int j = 0; j < MAP_COLS; j++) {
@@ -201,6 +204,7 @@ TPoint CJ2B2Demo::mapMatrixRepresentation(vector<TPoint> map, int **output)
 				int y = round((point.y-min_y)/Y_RES);
 				if (x == j && y == i) {
 					(*output)[idx] = 0;
+				//	dPrintLCYellow(1,"Settign cell %d,%d as an obstacle", x,y);
 					break;
 				}
 			}
@@ -1080,9 +1084,21 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 			if (iAstarPath.size() > 0) {
 				for (vector<node>::iterator iterator = iAstarPath.begin(); iterator < iAstarPath.end(); iterator++) {
 					node astar = *iterator;
-					filledCircleRGBA(screen, center_x+(astar.x-iBasePoint.x)*m, center_y+(astar.y-iBasePoint.y)*m, (int)1, 255, 0, 255, 255);
+					circleRGBA(screen, center_x+(astar.x-iBasePoint.x)*m, center_y+(astar.y-iBasePoint.y)*m, (int)3, 255, 0, 255, 255);
 				}
 			}
+			
+			//Draw a navigation pointer
+			float waypoint_x = center_x+(pose->y-iNextWaypoint.x)*m;
+			float waypoint_y = center_y+(pose->x-iNextWaypoint.y)*m;
+			lineRGBA(screen, robot_x, robot_y, waypoint_x, waypoint_y, 0, 0, 0, 255);
+			
+			//Draw odometry
+			char mystr[255];
+			sprintf(mystr, "Odometry: %f, %f, %f", pose->y, pose->x, pose->a);
+			stringRGBA(screen, screen->w-450, 590,  mystr, 0, 255, 0, 150);
+			sprintf(mystr, "Going to: %f, %f", iNextWaypoint.x,iNextWaypoint.y);
+			stringRGBA(screen, screen->w-450, 600,  mystr, 0, 255, 0, 150);
 		}
 	}
     
@@ -1342,7 +1358,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 				iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000);
 				const TPose2D *pose = pd.GetPose2D();
 				//iPose = pd.GetPose2D();
-				dPrint(1, "ODO %f %f %f", pose->x, pose->y, pose->a);
+				dPrint(1, "ODO %f %f %f", pose->y, pose->x, pose->a);
 					
 				if (iRobotState == RobotStateMoveAway) {
 					dPrint(1, "Moving away from the base");
@@ -1354,7 +1370,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 					if (fabs(iBasePoint.x-pose->y) > 0.2 || fabs(iBasePoint.y-pose->x) > 0.2) {
 						iInterface.iMotionCtrl->SetStop();
 						iRobotState = RobotStateShutdown;
-						dPrint(1, "Mission complete. Good bye!");
+						dPrintLCGreen(1, "Mission complete. Good bye!");
 					}
 				}
 				else if (iRobotState == RobotStateOpenGripper) {
@@ -1465,6 +1481,15 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 					
 						int *searchMap = new int[MAP_COLS*MAP_ROWS];
 						TPoint bias = mapMatrixRepresentation(iMap, &searchMap);
+						dPrint(1, "Map is biased by %f, %f", bias.x, bias.y);
+						//dPrint(1,"Map:");
+						//for (int i = 0; i < MAP_ROWS; i++) {
+							//string line;
+							//for (int j = 0; j < MAP_COLS; j++) {
+								//line.append((const char *)(searchMap[i*MAP_COLS+j] == 1 ? "1" : "0"));
+							//}
+							//dPrint(1,"%s",line.c_str());
+						//}
 						
 						//Bias the map because it contains negative values also
 						//But AStar algorithm needs only non-negative values
@@ -1603,7 +1628,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 							}
 					}
 					else {
-						dPrint(1,"Waypoint reached");
+						dPrintLCGreen(1,"Waypoint reached");
 						iHasPlan = false;
 						iMotionState = MotionStateIdle;
 						if (iRobotState == RobotStateGoToStone) {
