@@ -91,6 +91,7 @@ CJ2B2Demo::CJ2B2Demo(CJ2B2Client &aInterface)
     iLidarPoint(),
     iPauseOn(true),
     iHasPlan(false),
+    iObstacleHazard(false),
     iIter(0),
     iMapGrid(),
     iBasePoint(),
@@ -673,22 +674,38 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 			TPoint farRightSDL = SDLPoint(far_right);
 			TPoint closeLeftSDL = SDLPoint(close_left);
 			TPoint closeRightSDL = SDLPoint(close_right);
+			 
+			const Sint16 vx[4] = {closeLeftSDL.x, farLeftSDL.x, farRightSDL.x, closeRightSDL.x};
+			const Sint16 vy[4] = {closeLeftSDL.y, farLeftSDL.y, farRightSDL.y, closeRightSDL.y};
+			filledPolygonRGBA(screen, vx, vy, 4, iObstacleHazard ? 255 : 0, iObstacleHazard ? 0 : 255, 0, 100);
 			
-			lineRGBA(screen, closeLeftSDL.x, closeLeftSDL.y, farLeftSDL.x, farLeftSDL.y, 255, 0, 255, 100);
-			lineRGBA(screen, farLeftSDL.x, farLeftSDL.y, farRightSDL.x, farRightSDL.y, 255, 0, 255, 100);
-			lineRGBA(screen, farRightSDL.x, farRightSDL.y, closeRightSDL.x, closeRightSDL.y, 255, 0, 255, 100);
-			lineRGBA(screen, closeRightSDL.x, closeRightSDL.y, closeLeftSDL.x, closeLeftSDL.y, 255, 0, 255, 100);
+			
+			//Draw a navigation pointer
+			char mystr[255];
+			if (iRobotState == RobotStateGoHome || iRobotState == RobotStateGoToStone || (iRobotState == RobotStateAvoidObstacle && (iPreviousRobotState == RobotStateGoHome || iPreviousRobotState == RobotStateGoToStone))) { 
+				TPoint waypointSDL = SDLPoint(iNextWaypoint);
+				lineRGBA(screen, robotSDL.x, robotSDL.y, waypointSDL.x, waypointSDL.y, 0, 0, 0, 255);
+				sprintf(mystr, "Going to: %f, %f", iNextWaypoint.x,iNextWaypoint.y);
+				stringRGBA(screen, screen->w-640, 540,  mystr, 0, 255, 0, 150);
+			}
 			
 			
 			//Draw robot, heading and laser device position
-			TPoint pointerTipPoint;
-			pointerTipPoint.x = 0;
-			pointerTipPoint.y = 0.2;
-			pointerTipPoint = robotToWorldPoint(pointerTipPoint, pose);
-			TPoint pointerSDL = SDLPoint(pointerTipPoint);
+			TPoint pointerPoint1, pointerPoint2, pointerPoint3;
+			pointerPoint1.x = 0, pointerPoint1.y = 0.2;
+			pointerPoint2.x = -0.2, pointerPoint2.y = 0;
+			pointerPoint3.x = 0.2, pointerPoint3.y = 0;
+			pointerPoint1 = robotToWorldPoint(pointerPoint1, pose);
+			pointerPoint2 = robotToWorldPoint(pointerPoint2, pose);
+			pointerPoint3 = robotToWorldPoint(pointerPoint3, pose);
+			TPoint pointerSDL1 = SDLPoint(pointerPoint1);
+			TPoint pointerSDL2 = SDLPoint(pointerPoint2);
+			TPoint pointerSDL3 = SDLPoint(pointerPoint3);
+			
 			filledCircleRGBA(screen, robotSDL.x, robotSDL.y, (int)10, 0, 255, 0, 255);
-			lineRGBA(screen, robotSDL.x, robotSDL.y, pointerSDL.x, pointerSDL.y, 0, 0, 0, 255);
-			filledCircleRGBA(screen, lidarSDL.x, lidarSDL.y, (int)2, 255, 0, 255, 255);
+			filledTrigonRGBA(screen, pointerSDL1.x, pointerSDL1.y, pointerSDL2.x, pointerSDL2.y, pointerSDL3.x, pointerSDL3.y, 255, 0, 0, 255);
+			filledCircleRGBA(screen, lidarSDL.x, lidarSDL.y, (int)2, 255, 255, 0, 255);
+			circleRGBA(screen, robotSDL.x, robotSDL.y, (int)10, 0, 0, 0, 255);
 			
 			//Draw obstacles
 			//Lock();
@@ -716,14 +733,14 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 				}
 			}
 			
-			char mystr[255];
-			if (iRobotState == RobotStateGoHome || iRobotState == RobotStateGoToStone || (iRobotState == RobotStateAvoidObstacle && (iPreviousRobotState == RobotStateGoHome || iPreviousRobotState == RobotStateGoToStone))) { 
-				//Draw a navigation pointer
-				TPoint waypointSDL = SDLPoint(iNextWaypoint);
-				lineRGBA(screen, robotSDL.x, robotSDL.y, waypointSDL.x, waypointSDL.y, 0, 0, 0, 255);
-				sprintf(mystr, "Going to: %f, %f", iNextWaypoint.x,iNextWaypoint.y);
-				stringRGBA(screen, screen->w-640, 540,  mystr, 0, 255, 0, 150);
-			}
+			//Draw shortest distance
+			float distance = iSmallestDistanceToObject.distance;
+			float angle = iSmallestDistanceToObject.angle;
+			TPoint closestPoint = robotPoint(distance, angle, iLidarPoint.y);
+			closestPoint = robotToWorldPoint(closestPoint, pose);
+			TPoint closestSDL = SDLPoint(closestPoint);
+			lineRGBA(screen, lidarSDL.x, lidarSDL.y, closestSDL.x, closestSDL.y, 0, 0, 255, 255);
+			circleRGBA(screen, closestSDL.x, closestSDL.y, (int)3, 0, 0, 255, 255);
 			
 			
 			const char stateStr[9][60] = {
@@ -1022,9 +1039,8 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 				float distance = iSmallestDistanceToObject.distance;
 				float angle = iSmallestDistanceToObject.angle;
 				TPoint closestPoint = robotPoint(distance, angle, iLidarPoint.y);
-				bool obstacle = fabs(closestPoint.x) > CORRIDOR_RADIUS || closestPoint.y < CORRIDOR_DEPTH;
-				
-				if (obstacle && iRobotState != RobotStateAvoidObstacle) {
+				iObstacleHazard = fabs(closestPoint.x) < CORRIDOR_RADIUS && closestPoint.y < CORRIDOR_DEPTH;				
+				if (iObstacleHazard && iRobotState != RobotStateAvoidObstacle) {
 					iInterface.iMotionCtrl->SetStop();
 					ownSleep_ms(20);
 					iPreviousRobotState = iRobotState;
@@ -1077,7 +1093,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 						}
 					}
 					else if (iRobotState == RobotStateAvoidObstacle) {
-						if (obstacle) {
+						if (iObstacleHazard) {
 							TurnDirection direction = iPreviousDirection != DirectionUnknown && iPreviousDirection != DirectionForward ? iPreviousDirection : angle < 0 ? DirectionRight : DirectionLeft;
 							
 							//Turn by random angle

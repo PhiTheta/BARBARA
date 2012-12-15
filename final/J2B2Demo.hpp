@@ -120,6 +120,7 @@ private:
   TPoint iLidarPoint;
   volatile bool iPauseOn;
   volatile bool iHasPlan;
+  volatile bool iObstacleHazard;
   int iIter;
   int iMapGrid[MAP_COLS*MAP_ROWS];
   TPoint iBasePoint;
