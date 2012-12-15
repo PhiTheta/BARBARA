@@ -43,6 +43,8 @@ bool skip_window=false;
 #define GRIPPER_OPEN_ANGLE	0
 #define GRIPPER_CLOSED_ANGLE (M_PI/3-M_PI/20)
 #define CAMERA_TILT_ANGLE	(-M_PI/10)
+#define CORRIDOR_RADIUS	0.3
+#define CORRIDOR_DEPTH	0.4
 
 int iPreviousDirection = 0;
 
@@ -79,22 +81,18 @@ CJ2B2Demo::CJ2B2Demo(CJ2B2Client &aInterface)
     iLastLaserDistanceArray(),
     iLastLaserTimestamp(),
     iLastOdometryTimestamp(),
-    iLaserPosition(),
     iFirstSLAMAttempt(true),
     iGripperOpen(true),
-    iRobotPose(),
-    iPreviousRobotPose(),
-    iOdometryPose(),
-    iPreviousOdometryPose(),
     iGridMap(),
     iMap(),
-    iPreviousLaserData(),
 	iSmoothAstarPath(),
 	iAstarPath(),
     iNextWaypoint(),
+    iLidarPoint(),
     iPauseOn(true),
     iHasPlan(false),
     iIter(0),
+    iMapGrid(),
     iBasePoint(),
     iPreviousDirection(DirectionForward),
     iMotionState(MotionStateIdle),
@@ -121,13 +119,16 @@ void CJ2B2Demo::Execute()
 	
 	 iInterface.iPositionOdometry->SetPosition(*mypos);
 	 
+	 iLidarPoint.x = 0;
+	 iLidarPoint.y = 0;
+	 
 	int posSeq = -1;
 	MaCI::Position::CPositionData pd;
 	if (iInterface.iPositionOdometry) {
 		iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000);
 		const MaCI::Position::TPose2D *pose = pd.GetPose2D();
-		iBasePoint.x = pose->y;
-		iBasePoint.y = pose->x;
+		iBasePoint.x = pose->x;
+		iBasePoint.y = pose->y;
 	}
 	 //EKF = new odoEKF();
 	 //EKF->setDt(0.2);
@@ -601,7 +602,7 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
       /////////////////////////////////////////////////////////////////////////////
       SDL_Surface *image;
       SDL_RWops *rw;
-      SDL_Rect rcDest = {0,0,0,0};
+      SDL_Rect rcDest = {450,0,0,0};
       
       rw = SDL_RWFromMem((void*)iLastCameraImage.GetImageDataPtr(), 
                          iLastCameraImage.GetImageDataSize());
@@ -619,14 +620,12 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 			const MaCI::Position::TPose2D *pose = pd.GetPose2D();
 			
 			SDL_Rect rect;
-			rect.x = screen->w- 450;
-			rect.y = 130 ;
+			rect.x = 0;
+			rect.y = 0 ;
 			rect.w = 450 ;  // Set the width of this rectangle area
 			rect.h = 450 ;  // Set the height of this rectangle area
 			float center_x = rect.x+rect.w/2;
 			float center_y = rect.y+rect.h/2;
-			float m = 50;	//Multiplier for euclidean coordinates
-			float m_a = 10; //Robot radius
 		
 			SDL_FillRect(screen , &rect , SDL_MapRGB(screen->format , 255 , 255 , 255 ) );
 		  
@@ -644,44 +643,57 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 			SDL_FillRect(screen , &homeFrameRect , SDL_MapRGB(screen->format , 0,0,0) );
 			SDL_FillRect(screen , &homeRect , SDL_MapRGB(screen->format , 255,255,255) );
 			
+			TPoint posePoint;
+			posePoint.x = pose->x;
+			posePoint.y = pose->y;
 			
-			float robot_x = center_x+(pose->y-iBasePoint.x)*m;
-			float robot_y = center_y+(pose->x-iBasePoint.y)*m;
-			
-			float laser_x = robot_x - iLaserPosition.x*sin(-pose->a)*m;
-			float laser_y = robot_y + iLaserPosition.x*cos(-pose->a)*m;
+			TPoint robotSDL = SDLPoint(posePoint);
+			TPoint lidarSDL = SDLPoint(robotToWorldPoint(iLidarPoint, pose));
 			
 			//Draw laser lines
 			vector<TPoint> laserPoints;
 			for(EACH_IN_i(iLastLaserDistanceArray)) {
-				float laser_end_x = laser_x - i->distance*sin(-i->angle-pose->a)*m;
-				float laser_end_y = laser_y + i->distance*cos(-i->angle-pose->a)*m;
-				if (laser_end_x < rect.x) laser_end_x = rect.x;
-				if (laser_end_y < rect.y) laser_end_y = rect.y;
-				if (laser_end_x > rect.x+rect.w) laser_end_x = rect.x+rect.w;
-				if (laser_end_y > rect.y+rect.h) laser_end_y = rect.y+rect.h;
-				
-				TPoint laser;
-				laser.x = laser_end_x;
-				laser.y = laser_end_y;
-				laserPoints.push_back(laser);
-				lineRGBA(screen, laser_x, laser_y, laser_end_x, laser_end_y, 255, 155, 155, 50);
+				TPoint scanPoint = worldPoint(i->distance, i->angle, iLidarPoint.y, pose);
+				TPoint scanSDL = SDLPoint(scanPoint);
+				laserPoints.push_back(scanSDL);
+				lineRGBA(screen, lidarSDL.x, lidarSDL.y, scanSDL.x, scanSDL.y, 255, 155, 155, 50);
 			}
+			
+			//Draw safe zone
+			TPoint close_left, close_right, far_left, far_right;
+			close_left.x = -CORRIDOR_RADIUS;
+			close_left.y = 0;
+			close_right.x = CORRIDOR_RADIUS;
+			close_right.y = 0;
+			far_left.x = -CORRIDOR_RADIUS;
+			far_left.y = CORRIDOR_DEPTH;
+			far_right.x = CORRIDOR_RADIUS;
+			far_right.y = CORRIDOR_DEPTH;
+			close_left = robotToWorldPoint(close_left, pose);
+			close_right = robotToWorldPoint(close_right, pose);
+			far_left = robotToWorldPoint(far_left, pose);
+			far_right = robotToWorldPoint(far_right, pose);
+			lineRGBA(screen, close_left.x, close_left.y, far_left.x, far_left.y, 255, 0, 255, 100);
+			lineRGBA(screen, far_left.x, far_left.y, far_right.x, far_right.y, 255, 0, 255, 100);
+			lineRGBA(screen, far_right.x, far_right.y, close_right.x, close_right.y, 255, 0, 255, 100);
+			lineRGBA(screen, close_right.x, close_right.y, close_left.x, close_left.y, 255, 0, 255, 100);
 			
 			
 			//Draw robot, heading and laser device position
-			float pointer_end_x = robot_x - m_a*sin(-pose->a);
-			float pointer_end_y = robot_y + m_a*cos(-pose->a);
-			filledCircleRGBA(screen, robot_x, robot_y, (int)10, 0, 255, 0, 255);
-			lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 0, 0, 0, 255);
-			filledCircleRGBA(screen, laser_x, laser_y, (int)2, 255, 0, 255, 255);
+			TPoint pointerTipPoint;
+			pointerTipPoint.x = 0;
+			pointerTipPoint.y = 0.15;
+			pointerTipPoint = robotToWorldPoint(pointerTipPoint, pose);
+			TPoint pointerSDL = SDLPoint(pointerTipPoint);
+			filledCircleRGBA(screen, robotSDL.x, robotSDL.y, (int)10, 0, 255, 0, 255);
+			lineRGBA(screen, robotSDL.x, robotSDL.y, pointerSDL.x, pointerSDL.y, 0, 0, 0, 255);
+			filledCircleRGBA(screen, lidarSDL.x, lidarSDL.y, (int)2, 255, 0, 255, 255);
 			
 			//Draw obstacles
 			//Lock();
 			for (vector<TPoint>::iterator iterator = iMap.begin(); iterator < iMap.end(); iterator++) {
-				TPoint point = *iterator;
-				//filledCircleRGBA(screen, rect.x+rect.w/2-point.x*m, rect.y+rect.h/2-point.y*m, (int)1, 0, 0, 255, 255);
-				filledCircleRGBA(screen, center_x+(point.x-iBasePoint.x)*m, center_y+(point.y-iBasePoint.y)*m, (int)1, 0, 0, 255, 255);
+				TPoint pointSDL = SDLPoint(*iterator);
+				filledCircleRGBA(screen, pointSDL.x, pointSDL.y, (int)1, 0, 0, 255, 255);
 			}
 			//Unlock(); 
 			
@@ -695,24 +707,21 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 			if (iAstarPath.size() > 0) {
 				for (vector<node>::iterator iterator = iAstarPath.begin(); iterator < iAstarPath.end(); iterator++) {
 					node astar = *iterator;
-					float point_x = center_x+(astar.x-iBasePoint.x)*m;
-					float point_y = center_y+(astar.y-iBasePoint.y)*m;
-					if (point_x < rect.x) point_x = rect.x;
-					if (point_y < rect.y) point_y = rect.y;
-					if (point_x > rect.x+rect.w) point_x = rect.x+rect.w;
-					if (point_y > rect.y+rect.h) point_y = rect.y+rect.h;
-					circleRGBA(screen, point_x, point_y, (int)3, 255, 0, 255, 255);
+					TPoint nodePoint;
+					nodePoint.x = astar.x;
+					nodePoint.y = astar.y;
+					TPoint nodeSDL = SDLPoint(nodePoint);
+					circleRGBA(screen, nodeSDL.x, nodeSDL.y, (int)3, 255, 0, 255, 255);
 				}
 			}
 			
 			char mystr[255];
 			if (iRobotState == RobotStateGoHome || iRobotState == RobotStateGoToStone || (iRobotState == RobotStateAvoidObstacle && (iPreviousRobotState == RobotStateGoHome || iPreviousRobotState == RobotStateGoToStone))) { 
 				//Draw a navigation pointer
-				float waypoint_x = center_x+(iNextWaypoint.x-iBasePoint.x)*m;
-				float waypoint_y = center_y+(iNextWaypoint.y-iBasePoint.y)*m;
-				lineRGBA(screen, robot_x, robot_y, waypoint_x, waypoint_y, 0, 0, 0, 255);
+				TPoint waypointSDL = SDLPoint(iNextWaypoint);
+				lineRGBA(screen, robotSDL.x, robotSDL.y, waypointSDL.x, waypointSDL.y, 0, 0, 0, 255);
 				sprintf(mystr, "Going to: %f, %f", iNextWaypoint.x,iNextWaypoint.y);
-				stringRGBA(screen, screen->w-450, 620,  mystr, 0, 255, 0, 150);
+				stringRGBA(screen, screen->w-640, 540,  mystr, 0, 255, 0, 150);
 			}
 			
 			
@@ -734,51 +743,51 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 			};
 			
 			//Draw odometry
-			sprintf(mystr, "Odometry: %f, %f, %f", pose->y, pose->x, pose->a);
-			stringRGBA(screen, screen->w-450, 590,  mystr, 0, 255, 0, 150);
-			stringRGBA(screen, screen->w-450, 600,  stateStr[iRobotState], 0, 255, 0, 150);
-			stringRGBA(screen, screen->w-450, 610,  gripperStr[iGripperOpen], 0, 255, 0, 150);
+			sprintf(mystr, "Odometry: %f, %f, %f", pose->x, pose->y, pose->a);
+			stringRGBA(screen, screen->w-640, 500,  mystr, 0, 255, 0, 150);
+			stringRGBA(screen, screen->w-640, 510,  stateStr[iRobotState], 0, 255, 0, 150);
+			stringRGBA(screen, screen->w-640, 520,  gripperStr[iGripperOpen], 0, 255, 0, 150);
+			
+			
+			
+			//Draw grid
+			rect.x = 0;
+			rect.y = 450;
+			rect.w = 450;  // Set the width of this rectangle area
+			rect.h = 450;  // Set the height of this rectangle area
+			SDL_FillRect(screen , &rect , SDL_MapRGB(screen->format , 255 , 255 , 100 ) );
+			
+			SDL_Rect cellRect;
+			cellRect.w = rect.w/MAP_COLS; 
+			cellRect.h = rect.h/MAP_ROWS;
+			for (int i = 0; i < MAP_ROWS; i++) {
+				for (int j = 0; j < MAP_COLS; j++) {
+					if ((MAP_ROWS*i)+j < MAP_ROWS*MAP_COLS) {
+						if (iMapGrid[(MAP_ROWS*i)+j] == 0) {
+							cellRect.x = rect.x+cellRect.w*j;
+							cellRect.y = rect.y+cellRect.h*i;
+							SDL_FillRect(screen, &cellRect, SDL_MapRGB(screen->format, 0, 0, 0));
+						}
+					}
+				}
+			}
+			
 		}
 	}
-    
-    // Print help
-#define HELPSTRCOUNT 8
-    const char helpstr[HELPSTRCOUNT][60] = { 
-      "m - Toggle MotionDemo",
-      "p - Toggle PTU demo",
-      "g - Toggle Gripper",
-      "e - Enable Emergency actions",
-      "r - Disable Emergency actions",
-      "1,0 - Set all IO outputs on ESC to HIGH/LOW",
-      "w,a,s,d - Control PTU manually (PTUDemo must be OFF)",
-      "arrows - Drive around manually (MotionDemo must be OFF)",
-    };
-    int help_i = 0;
-    int text_x = 650;
-    int text_y = 5;
-    const int text_y_delta = 10;
-
-    for(help_i = 0; 
-        help_i < HELPSTRCOUNT;
-        text_y += text_y_delta, ++help_i) {
-      stringRGBA(screen, 
-                 text_x, text_y, 
-                 helpstr[help_i], 
-                 255, 0, 0, 150);
+	
+    if (iMotionThreadActive) {
+      stringRGBA(screen, screen->w-640, 560, "Driving autonomously", 255, 0, 0, 150);
     }
-
+    
     // print status reports
-    text_y += text_y_delta;
     char diststr[255];
     sprintf(diststr, "Smallest distance to object: %.2fm at %.3f rad", 
             iSmallestDistanceToObject.distance, 
             iSmallestDistanceToObject.angle);
     
-    stringRGBA(screen, 
-               text_x, text_y, 
+    stringRGBA(screen, screen->w-640, 530, 
                diststr,
                0, 255, 255, 150);
-    text_y += text_y_delta;
 
     if (iInterface.iIOBoardESC != NULL) {
       int m = iInterface.iIOBoardESC->GetDigitalMask(0, 1000);
@@ -786,25 +795,16 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
       sprintf(bitstr, "IO port state now: %08x", m);
       
       stringRGBA(screen, 
-                 text_x, text_y, 
+                 screen->w-640, 550, 
                  bitstr,
                  0, 255, 255, 150);
-      text_y += text_y_delta;
     }
     
-    if (iMotionThreadActive) {
-      stringRGBA(screen, 
-                 text_x, text_y, 
-                 "MotionDemo is active!", 
-                 0, 255, 0, 150);
-      text_y += text_y_delta;
-    }
     if (iPTUDemoActive) {
       stringRGBA(screen, 
-                 text_x, text_y, 
+                 screen->w-640, 570, 
                  "PTUDemo is active!", 
                  0, 255, 0, 150);
-      text_y += text_y_delta;
     }
 
     // Flip the double buffered screen. (Display the newly rendered screen)
@@ -960,7 +960,6 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
   int step = 0;
   int posSeq = -1;
   float K_alpha = 0.05;
-  float proximityAngleLimit = M_PI/2.5;
   
   
   if (iMotionThreadActive) {
@@ -982,8 +981,8 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 	if (iInterface.iPositionOdometry) {
 		iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000);
 		const TPose2D *pose = pd.GetPose2D();
-		iBasePoint.x = pose->y;
-		iBasePoint.y = pose->x;
+		iBasePoint.x = pose->x;
+		iBasePoint.y = pose->y;
 	}
 	
 	iInterface.iBehaviourCtrl->SetStart();
@@ -1011,24 +1010,18 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 				iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, iLastLaserTimestamp.GetGimTime());
 				const TPose2D *pose = pd.GetPose2D();
 				//iPose = pd.GetPose2D();
-				dPrint(1, "ODO %f %f %f", pose->y, pose->x, pose->a);
+				dPrint(1, "ODO %f %f %f", pose->x, pose->y, pose->a);
 					
 				
 				r_acc = 0.1;
 				r_speed = 0.0;
 				r_wspeed = 0.0;
 				
-				//Read laser sensor;
+				//Check for obstacles;
 				float distance = iSmallestDistanceToObject.distance;
 				float angle = iSmallestDistanceToObject.angle;
-				
-				float proximityAlertLimit = 0.7;
-				//Allow it to come closer on sides
-				if (angle < proximityAngleLimit && angle > -proximityAngleLimit) {
-					proximityAlertLimit = 0.3;
-				}
-				
-				bool obstacle = distance <= proximityAlertLimit && distance >= 0;
+				TPoint closestPoint = robotPoint(distance, angle, iLidarPoint.y);
+				bool obstacle = fabs(closestPoint.x) > CORRIDOR_RADIUS || closestPoint.y < CORRIDOR_DEPTH;
 				
 				if (obstacle && iRobotState != RobotStateAvoidObstacle) {
 					iInterface.iMotionCtrl->SetStop();
@@ -1045,7 +1038,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 						r_wspeed = 0;
 						iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
 						ownSleep_ms(20);
-						if (fabs(iBasePoint.x-pose->y) > 0.2 || fabs(iBasePoint.y-pose->x) > 0.2) {
+						if (fabs(iBasePoint.x-pose->x) > 0.2 || fabs(iBasePoint.y-pose->y) > 0.2) {
 							iInterface.iMotionCtrl->SetStop();
 							iRobotState = RobotStateShutdown;
 							iMotionThreadActive = false;
@@ -1129,9 +1122,8 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 							iInterface.iMotionCtrl->SetStop();
 							ownSleep_ms(20);
 							
-									
-							int *searchMap = new int[MAP_COLS*MAP_ROWS];
-							mapMatrixRepresentation(iMap, &searchMap);
+							updateMapGrid();
+							
 							//dPrint(1,"Map:");
 							//for (int i = 0; i < MAP_ROWS; i++) {
 								//string line;
@@ -1149,8 +1141,8 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 							dPrint(1, "Map is biased by %d, %d", bias_x, bias_y);
 							
 							//Current robot position in grid coordinates
-							int grid_x = round((pose->y)/X_RES)+bias_x;
-							int grid_y = round((pose->x)/Y_RES)+bias_y;
+							int grid_x = round((pose->x)/X_RES)+bias_x;
+							int grid_y = round((pose->y)/Y_RES)+bias_y;
 							
 							//Waypoint position in grid coordinates
 							int p_x = round((iNextWaypoint.x)/X_RES)+bias_x;
@@ -1159,7 +1151,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 							dPrint(1, "On the map navigating from %d, %d to %d, %d", grid_x,grid_y,p_x,p_y);
 						
 							pathplan2 plan;
-							iAstarPath = plan.get_graph(searchMap,MAP_COLS,MAP_ROWS,grid_x,grid_y,p_x,p_y);
+							iAstarPath = plan.get_graph(iMapGrid,MAP_COLS,MAP_ROWS,grid_x,grid_y,p_x,p_y);
 							
 							//Unbias nodes
 							for (int i = 0; i < (int)iAstarPath.size(); i++) {
@@ -1366,7 +1358,9 @@ int CJ2B2Demo::RunSensorsDemo(int aIterations)
     // too fast polling consumes processing time and gains nothing.
     
     if (iInterface.iRangingLaser) {
-		iInterface.iRangingLaser->GetDevicePosition (iLaserPosition);
+		 MaCI::Ranging::TDeviceInformationPosition laserPosition;
+		iInterface.iRangingLaser->GetDevicePosition (laserPosition);
+		iLidarPoint.y = laserPosition.x;
 		
       r = iInterface.iRangingLaser->GetDistanceArray(laserDistanceData, 
                                                      &laserHeader, &laserTimestamp, &laserSeq, 
@@ -1451,34 +1445,7 @@ int CJ2B2Demo::ThreadFunction(const int aThreadNumber)
 //*****************************************************************************
 
 
-void CJ2B2Demo::updateMap(ISGridPose2D pose, vector<ISGridPoint> scans)
-{
-	for (vector<ISGridPoint>::iterator iterator = scans.begin(); iterator < scans.end(); iterator++) {
-		ISGridPoint point = *iterator;
-		ISGridPoint obstaclePoint = robotToWorld(pose, point);
-		if (!setContainsPoint(iGridMap, obstaclePoint)) {
-			iGridMap.push_back(obstaclePoint);
-		}
-	}
-}
 
-ISGridPose2D CJ2B2Demo::gridPoseFromTPose(const MaCI::Position::TPose2D *pose)
-{
-	ISGridPose2D res;
-	//double xind = pose->x;
-	//double yind = pose->y;
-	//xind /= (X_RES*2);
-	//yind /= (Y_RES*2);
-	//res.x = round(xind);
-	//res.y = round(yind);
-	res.x = round(pose->x/X_RES);
-	res.y = round(pose->y/Y_RES);
-	res.angle = (double)pose->a;
-	
-	//if (!iPauseOn) dPrint(1,"%f,%f -> %f,%f -> %d,%d [%f,%f]", pose->x, pose->y, xind, yind, res.x, res.y, X_RES, Y_RES);
-	
-	return res;
-}
 
 void CJ2B2Demo::analyzeCamera()
 {
@@ -1534,7 +1501,7 @@ void CJ2B2Demo::analyzeCamera()
 			
 			if (iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, iLastLaserTimestamp.GetGimTime())) {
 				const TPose2D *pose = pd.GetPose2D();
-				iNextWaypoint = worldPoint(distance.distance, distance.angle, iLaserPosition.x+CAM_LIDAR_DIST, pose);
+				iNextWaypoint = worldPoint(distance.distance, distance.angle, iLidarPoint.y+CAM_LIDAR_DIST, pose);
 				iRobotState = RobotStateGoToStone;
 			}
 		}
@@ -1550,7 +1517,7 @@ void CJ2B2Demo::analyzeCamera()
 		if (iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, iLastLaserTimestamp.GetGimTime())) {
 			const TPose2D *pose = pd.GetPose2D();
 			dPrintLCRed(1, "ACHTUNG!!!! SIMULATED WAYPOINT!!!");
-			iNextWaypoint.x = iBasePoint.x-sin(pose->a)*0.5;
+			iNextWaypoint.x = iBasePoint.x+sin(pose->a)*0.5;
 			iNextWaypoint.y = iBasePoint.y+cos(pose->a)*0.5;
 			iRobotState = RobotStateGoToStone;
 		}
@@ -1558,43 +1525,13 @@ void CJ2B2Demo::analyzeCamera()
 	}
 }
 
-vector<ISGridPoint> CJ2B2Demo::getEuclideanLaserData()
-{
-	vector<ISGridPoint> euclideanLaserData;
-	int index = 0;
-	for(EACH_IN_i(iLastLaserDistanceArray)) {
-		ISGridPoint point = euclideanLaserPoint(i->distance, i->angle, iLaserPosition.x, X_RES, Y_RES, index++);
-		if (!setContainsPoint(euclideanLaserData, point)) {
-			euclideanLaserData.push_back(point);
-		}
-	}
-	return euclideanLaserData;
-}
-
-void CJ2B2Demo::mapFromGridMap(vector<ISGridPoint> map, int **output)
+void CJ2B2Demo::updateMapGrid()
 {
 	for (int i = 0; i < MAP_ROWS; i++) {
 		for (int j = 0; j < MAP_COLS; j++) {
 			int idx = i*MAP_COLS+j;
-			(*output)[idx] = 1;
-			for (vector<ISGridPoint>::iterator iterator = map.begin(); iterator < map.end(); iterator++) {
-				ISGridPoint point = *iterator;
-				if (point.x == j && point.y == i) {
-					(*output)[idx] = 0;
-					break;
-				}
-			}
-		}
-	}
-}
-
-void CJ2B2Demo::mapMatrixRepresentation(vector<TPoint> map, int **output)
-{
-	for (int i = 0; i < MAP_ROWS; i++) {
-		for (int j = 0; j < MAP_COLS; j++) {
-			int idx = i*MAP_COLS+j;
-			(*output)[idx] = 1;
-			for (vector<TPoint>::iterator iterator = map.begin(); iterator < map.end(); iterator++) {
+			iMapGrid[idx] = 1;
+			for (vector<TPoint>::iterator iterator = iMap.begin(); iterator < iMap.end(); iterator++) {
 				TPoint point = *iterator;
 				//Biased by min_x, min_y
 				int x = round((point.x)/X_RES);
@@ -1602,7 +1539,7 @@ void CJ2B2Demo::mapMatrixRepresentation(vector<TPoint> map, int **output)
 				x += MAP_COLS/2; //Bias by half of the map to have all values positive
 				y += MAP_ROWS/2; //Bias by half of the map to have all values positive
 				if (x == j && y == i) {
-					(*output)[idx] = 0;
+					iMapGrid[idx] = 0;
 				//	dPrintLCYellow(1,"Settign cell %d,%d as an obstacle", x,y);
 					break;
 				}
@@ -1805,10 +1742,24 @@ void CJ2B2Demo::runSLAM()
 
 TPoint CJ2B2Demo::worldPoint(float distance, float angle, float y_peripheral_offset, const MaCI::Position::TPose2D *pose)
 {
-	TPoint me;
-	me.x = pose->y;
-	me.y = pose->x;
+	TPoint point = robotPoint(distance, angle, y_peripheral_offset);
 	
+	//World coordinates
+	return robotToWorldPoint(point, pose);
+}
+
+TPoint CJ2B2Demo::robotToWorldPoint(TPoint point, const MaCI::Position::TPose2D *pose)
+{
+	TPoint res;
+	float worldAngle = pose->a+M_PI_2;
+	res.x = point.x*cos(worldAngle)+point.y*sin(worldAngle)+pose->x;
+	res.y = point.x*sin(worldAngle)-point.y*cos(worldAngle)+pose->y;
+	return res;
+}
+	
+
+TPoint CJ2B2Demo::robotPoint(float distance, float angle, float y_peripheral_offset)
+{
 	TPoint point;
 	
 	//Laser origin coordinates
@@ -1818,26 +1769,29 @@ TPoint CJ2B2Demo::worldPoint(float distance, float angle, float y_peripheral_off
 	//Robot origin coordinates
 	point.y += y_peripheral_offset;
 	
-	//World coordinates
+	return point;
+}
+
+TPoint CJ2B2Demo::SDLPoint(TPoint point)
+{
+	TPoint center;
+	center.x = 225;
+	center.y = 225;
+	
 	TPoint res;
-	res.x = point.x*cos(pose->a)+point.y*sin(pose->a)+me.x;
-	res.y = -point.x*sin(pose->a)+point.y*cos(pose->a)+me.y;
+	res.x = center.x-(point.x-iBasePoint.x)*50; //50 - multiplier for euclidean coordinates,
+	res.y = center.y+(point.y-iBasePoint.y)*50; //that is 1m is 50 px
+	res.x = MIN(450, res.x);
+	res.y = MIN(450, res.y);
 	return res;
 }
 
 void CJ2B2Demo::updateMap(const MaCI::Position::TPose2D *pose, bool eraseUntrustedPoints)
 {
-	TPoint me;
-	me.x = pose->y;
-	me.y = pose->x;
-		
-	TPoint lidarPoint;
-	
-	lidarPoint.x = me.x - iLaserPosition.x*sin(-pose->a);
-	lidarPoint.y = me.y + iLaserPosition.x*cos(-pose->a);
+	TPoint lidarWorldPoint = robotToWorldPoint(iLidarPoint, pose);
 	
 	for(EACH_IN_i(iLastLaserDistanceArray)) {
-		TPoint obstaclePoint = worldPoint(i->distance, i->angle, iLaserPosition.x, pose);
+		TPoint obstaclePoint = worldPoint(i->distance, i->angle, iLidarPoint.y, pose);
 		
 		bool exists = false;
 		for (vector<TPoint>::iterator iterator = iMap.begin(); iterator < iMap.end(); iterator++) {
@@ -1856,22 +1810,22 @@ void CJ2B2Demo::updateMap(const MaCI::Position::TPose2D *pose, bool eraseUntrust
 				//If obstacle lies on the laser point, eliminate it
 				for (vector<TPoint>::iterator iterator = iMap.begin(); iterator < iMap.end(); iterator++) {
 					TPoint mapPoint = *iterator;
-					if (fabs(obstaclePoint.x-lidarPoint.x) > 0.00001) {
-						float b = (obstaclePoint.x*lidarPoint.y-lidarPoint.x*obstaclePoint.y)/(obstaclePoint.x-lidarPoint.x);
-						float k = (lidarPoint.y-b)/lidarPoint.x;
+					if (fabs(obstaclePoint.x-lidarWorldPoint.x) > 0.00001) {
+						float b = (obstaclePoint.x*lidarWorldPoint.y-lidarWorldPoint.x*obstaclePoint.y)/(obstaclePoint.x-lidarWorldPoint.x);
+						float k = (lidarWorldPoint.y-b)/lidarWorldPoint.x;
 						if ((k*mapPoint.x+b)-mapPoint.y < 0.000001 &&
-						   ((mapPoint.x-lidarPoint.x > 0.01 && mapPoint.x-obstaclePoint.x < -0.01) || 
-						    (mapPoint.x-lidarPoint.x < -0.01 && mapPoint.x-obstaclePoint.x > 0.01)) &&
-						   ((mapPoint.y-lidarPoint.y > 0.01 && mapPoint.y-obstaclePoint.y < -0.01) ||
-						    (mapPoint.y-lidarPoint.y < -0.01 && mapPoint.y-obstaclePoint.y > 0.01))
+						   ((mapPoint.x-lidarWorldPoint.x > 0.01 && mapPoint.x-obstaclePoint.x < -0.01) || 
+						    (mapPoint.x-lidarWorldPoint.x < -0.01 && mapPoint.x-obstaclePoint.x > 0.01)) &&
+						   ((mapPoint.y-lidarWorldPoint.y > 0.01 && mapPoint.y-obstaclePoint.y < -0.01) ||
+						    (mapPoint.y-lidarWorldPoint.y < -0.01 && mapPoint.y-obstaclePoint.y > 0.01))
 						 ) {
 							iMap.erase(iterator);
 						}
 						//float obstacleDis=sqrt(obstaclePoint.x*obstaclePoint.x + obstaclePoint.y*obstaclePoint.y);
 						//float mapPointDis=sqrt(mapPoint.x*mapPoint.x + mapPoint.y*mapPoint.y);
-						//float lidarPointDis=sqrt(lidarPoint.x*lidarPoint.x + lidarPoint.y*lidarPoint.y);
+						//float lidarPointDis=sqrt(lidarWorldPoint.x*lidarWorldPoint.x + lidarWorldPoint.y*lidarWorldPoint.y);
 						//float mapPointAng= atan2(mapPoint.y,mapPoint.x);
-						//float lidarPointAng=atan2(lidarPoint.y,lidarPoint.x);
+						//float lidarPointAng=atan2(lidarWorldPoint.y,lidarWorldPoint.x);
 						//if ((k*mapPoint.x+b)-mapPoint.y < 0.0001 && 
 						    //(( obstacleDis  <  mapPointDis) && (mapPointDis < lidarPointDis )) &&
 						    //( fabs( mapPointAng - lidarPointAng)<0.0001)
@@ -1883,6 +1837,7 @@ void CJ2B2Demo::updateMap(const MaCI::Position::TPose2D *pose, bool eraseUntrust
 					}
 				}
 			}
+			
 			Unlock();
 		}
 		

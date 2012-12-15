@@ -22,8 +22,8 @@ vector<node> pathplan2::get_graph(int *map, int width, int height, int sx, int s
 	tmap = new int[w*h];
 	for(int i=0; i<w*h; i++) tmap[i] = map[i];
 
-    if(map[tx+ty*w]==0) { cout << "ziel gibt es nicht." << endl; return graph; }
-    if(map[sx+sy*w]==0) { cout << "quelle gibt es nicht." << endl; return graph; }
+    if(map[tx+ty*w]==0) { cout << "Target is at obstacle" << endl; return graph; }
+    if(map[sx+sy*w]==0) { cout << "Robot is at obstacle" << endl; return graph; }
 
     list<node>::iterator ci;
 
@@ -77,7 +77,7 @@ vector<node> pathplan2::get_graph(int *map, int width, int height, int sx, int s
         counter++;
     }
 
-    if(!found) cout << "kein Weg..\n";
+    if(!found) cout << "No route found..\n";
 
     /*
         Pfad rekonstruieren.

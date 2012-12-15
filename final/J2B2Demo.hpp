@@ -15,8 +15,8 @@
 
 #define MAP_WIDTH		4.5*2
 #define MAP_HEIGHT		3.7*2
-#define MAP_ROWS		(37*2*3)
-#define MAP_COLS		(45*2*3)
+#define MAP_ROWS		(((int)MAP_WIDTH)*10*3)
+#define MAP_COLS		(((int)MAP_HEIGHT)*10*3)
 #define X_RES			(MAP_WIDTH/MAP_COLS)
 #define Y_RES			(MAP_HEIGHT/MAP_ROWS)
 
@@ -110,37 +110,32 @@ private:
   MaCI::Ranging::TDistanceArray iLastLaserDistanceArray;
   MaCI::Common::TTimestamp iLastLaserTimestamp;
   MaCI::Common::TTimestamp iLastOdometryTimestamp;
-  MaCI::Ranging::TDeviceInformationPosition iLaserPosition;
   bool iFirstSLAMAttempt;
   bool iGripperOpen;
-  ISGridPose2D iRobotPose;
-  ISGridPose2D iPreviousRobotPose;
-  ISGridPose2D iOdometryPose;
-  ISGridPose2D iPreviousOdometryPose;
   vector<ISGridPoint> iGridMap;
   vector<TPoint> iMap;
-  vector<ISGridPoint> iPreviousLaserData;
   vector<MaCI::Position::TPose2D> iSmoothAstarPath;
   vector<node> iAstarPath;
   TPoint iNextWaypoint;
+  TPoint iLidarPoint;
   volatile bool iPauseOn;
   volatile bool iHasPlan;
   int iIter;
+  int iMapGrid[MAP_COLS*MAP_ROWS];
   TPoint iBasePoint;
   TurnDirection iPreviousDirection;
   MotionState iMotionState;
   InternalState iRobotState;
   InternalState iPreviousRobotState;
-  void updateMap(ISGridPose2D pose, vector<ISGridPoint> scans);
   void updateMap(const MaCI::Position::TPose2D *pose, bool eraseUntrustedPoints);
   void runSLAM();
-  ISGridPose2D gridPoseFromTPose(const MaCI::Position::TPose2D *pose);
   vector<MaCI::Position::TPose2D> smooth(vector<node> astar_path, float weight_data, float weight_smooth, float tolerance);
-  vector<ISGridPoint> getEuclideanLaserData();
-  void mapFromGridMap(vector<ISGridPoint> map, int **output);
-  void mapMatrixRepresentation(vector<TPoint> map, int **output);
+  void updateMapGrid();
   void analyzeCamera();
   TPoint worldPoint(float distance, float angle, float y_peripheral_offset, const MaCI::Position::TPose2D *pose);
+  TPoint robotPoint(float distance, float angle, float y_peripheral_offset);
+  TPoint robotToWorldPoint(TPoint point, const MaCI::Position::TPose2D *pose);
+  TPoint SDLPoint(TPoint point);
 };
 
 #endif
