@@ -123,7 +123,6 @@ void CJ2B2Demo::analyzeCamera()
 		}
 		ownTime_ms_t time = ownTime_get_ms();
 		Lock();
-		iLastCameraImage.WriteImageToFile("Image.jpg");
 		container.Copy(iLastCameraImage);
 		Unlock();
 		char mystr[255];
@@ -151,8 +150,6 @@ void CJ2B2Demo::analyzeCamera()
 		if (answer.Red_Target_Flag) {
 			dPrint(1, "Found something red");
 			Camera_Distance distance = Postion_Object(answer.c_x, answer.c_y, info.imagewidth, info.imageheight);
-			distance.distance = fabs(distance.distance);
-			distance.angle = distance.angle >= 0 ? distance.angle - M_PI_2 : distance.angle + M_PI_2;
 			dPrint(1, "Found a ball (distance %f; angle %f)", distance.distance, distance.angle);
 			
 			//Create a waypoint here
@@ -204,20 +201,8 @@ void CJ2B2Demo::mapFromGridMap(vector<ISGridPoint> map, int **output)
 	}
 }
 
-TPoint CJ2B2Demo::mapMatrixRepresentation(vector<TPoint> map, int **output)
+void CJ2B2Demo::mapMatrixRepresentation(vector<TPoint> map, int **output)
 {
-	//Bias the map because it contains negative values also
-	//But AStar algorithm needs only non-negative values
-	float min_x = FLT_MAX;
-	float min_y = FLT_MAX;
-	for (vector<TPoint>::iterator iterator = map.begin(); iterator < map.end(); iterator++) {
-		TPoint point = *iterator;
-		if ((min_x-point.x) > 0.0001) min_x = point.x;
-		if ((min_y-point.y) > 0.0001) min_y = point.y;
-	}
-	//min_x = ceil(min_x);
-	//min_y = ceil(min_y);
-	
 	for (int i = 0; i < MAP_ROWS; i++) {
 		for (int j = 0; j < MAP_COLS; j++) {
 			int idx = i*MAP_COLS+j;
@@ -225,8 +210,10 @@ TPoint CJ2B2Demo::mapMatrixRepresentation(vector<TPoint> map, int **output)
 			for (vector<TPoint>::iterator iterator = map.begin(); iterator < map.end(); iterator++) {
 				TPoint point = *iterator;
 				//Biased by min_x, min_y
-				int x = round((point.x-min_x)/X_RES);
-				int y = round((point.y-min_y)/Y_RES);
+				int x = round((point.x)/X_RES);
+				int y = round((point.y)/Y_RES);
+				x += MAP_COLS/2; //Bias by half of the map to have all values positive
+				y += MAP_ROWS/2; //Bias by half of the map to have all values positive
 				if (x == j && y == i) {
 					(*output)[idx] = 0;
 				//	dPrintLCYellow(1,"Settign cell %d,%d as an obstacle", x,y);
@@ -235,10 +222,6 @@ TPoint CJ2B2Demo::mapMatrixRepresentation(vector<TPoint> map, int **output)
 			}
 		}
 	}
-	TPoint bias;
-	bias.x = min_x;
-	bias.y = min_y;
-	return bias;
 }
 
 vector<MaCI::Position::TPose2D> CJ2B2Demo::smooth(vector<node> astar_path, float weight_data, float weight_smooth, float tolerance)
@@ -263,7 +246,6 @@ vector<MaCI::Position::TPose2D> CJ2B2Demo::smooth(vector<node> astar_path, float
 	while(change >= tolerance) {
 		change = 0.0;					
 		for(int i = 1; i < (int)smooth_astar_path.size()-1; i++) {
-			dPrint(1,"Smooth astar path %d %d", i, smooth_astar_path.size());
 			aux_i = smooth_astar_path.at(i);
 			aux_i1 = smooth_astar_path.at(i-1);
 			aux_i2 = smooth_astar_path.at(i+1);
@@ -280,7 +262,6 @@ vector<MaCI::Position::TPose2D> CJ2B2Demo::smooth(vector<node> astar_path, float
 			change += fabs(aux_i.y - new_point.y);
 			smooth_astar_path.at(i) = new_point;
 		}
-		//dPrint(1,"ToleranceX: %f", change);
 	}
 	
 	return smooth_astar_path;
@@ -1084,10 +1065,16 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 			float laser_x = robot_x - iLaserPosition.x*sin(-pose->a)*m;
 			float laser_y = robot_y + iLaserPosition.x*cos(-pose->a)*m;
 			
+			//Draw laser lines
 			vector<TPoint> laserPoints;
 			for(EACH_IN_i(iLastLaserDistanceArray)) {
 				float laser_end_x = laser_x - i->distance*sin(-i->angle-pose->a)*m;
 				float laser_end_y = laser_y + i->distance*cos(-i->angle-pose->a)*m;
+				if (laser_end_x < rect.x) laser_end_x = rect.x;
+				if (laser_end_y < rect.y) laser_end_y = rect.y;
+				if (laser_end_x > rect.x+rect.w) laser_end_x = rect.x+rect.w;
+				if (laser_end_y > rect.y+rect.h) laser_end_y = rect.y+rect.h;
+				
 				TPoint laser;
 				laser.x = laser_end_x;
 				laser.y = laser_end_y;
@@ -1095,13 +1082,14 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 				lineRGBA(screen, laser_x, laser_y, laser_end_x, laser_end_y, 255, 215, 215, 255);
 			}
 			
+			//Draw robot, heading and laser device position
 			float pointer_end_x = robot_x - m_a*sin(-pose->a);
 			float pointer_end_y = robot_y + m_a*cos(-pose->a);
 			filledCircleRGBA(screen, robot_x, robot_y, (int)10, 0, 255, 0, 255);
 			lineRGBA(screen, robot_x, robot_y, pointer_end_x, pointer_end_y, 0, 0, 0, 255);
-
 			filledCircleRGBA(screen, laser_x, laser_y, (int)2, 255, 0, 255, 255);
 			
+			//Draw obstacles
 			//Lock();
 			for (vector<TPoint>::iterator iterator = iMap.begin(); iterator < iMap.end(); iterator++) {
 				TPoint point = *iterator;
@@ -1110,6 +1098,7 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 			}
 			//Unlock(); 
 			
+			//Draw laser points
 			for (vector<TPoint>::iterator iterator = laserPoints.begin(); iterator < laserPoints.end(); iterator++) {
 				TPoint laser = *iterator;
 				filledCircleRGBA(screen, laser.x, laser.y, (int)2, 255, 0, 0, 255);
@@ -1119,7 +1108,13 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 			if (iAstarPath.size() > 0) {
 				for (vector<node>::iterator iterator = iAstarPath.begin(); iterator < iAstarPath.end(); iterator++) {
 					node astar = *iterator;
-					circleRGBA(screen, center_x+(astar.x-iBasePoint.x)*m, center_y+(astar.y-iBasePoint.y)*m, (int)3, 255, 0, 255, 255);
+					float point_x = center_x+(astar.x-iBasePoint.x)*m;
+					float point_y = center_y+(astar.y-iBasePoint.y)*m;
+					if (point_x < rect.x) point_x = rect.x;
+					if (point_y < rect.y) point_y = rect.y;
+					if (point_x > rect.x+rect.w) point_x = rect.x+rect.w;
+					if (point_y > rect.y+rect.h) point_y = rect.y+rect.h;
+					circleRGBA(screen, point_x, point_y, (int)3, 255, 0, 255, 255);
 				}
 			}
 			
@@ -1522,8 +1517,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 					if (!iHasPlan) {
 					
 						int *searchMap = new int[MAP_COLS*MAP_ROWS];
-						TPoint bias = mapMatrixRepresentation(iMap, &searchMap);
-						dPrint(1, "Map is biased by %f, %f", bias.x, bias.y);
+						mapMatrixRepresentation(iMap, &searchMap);
 						//dPrint(1,"Map:");
 						//for (int i = 0; i < MAP_ROWS; i++) {
 							//string line;
@@ -1536,14 +1530,17 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 						//Bias the map because it contains negative values also
 						//But AStar algorithm needs only non-negative values
 						
+						int bias_x = MAP_COLS/2;
+						int bias_y = MAP_ROWS/2;
+						dPrint(1, "Map is biased by %d, %d", bias_x, bias_y);
 						
 						//Current robot position in grid coordinates
-						int grid_x = round((pose->y-bias.x)/X_RES);
-						int grid_y = round((pose->x-bias.y)/Y_RES);
+						int grid_x = round((pose->y)/X_RES)+bias_x;
+						int grid_y = round((pose->x)/Y_RES)+bias_y;
 						
 						//Waypoint position in grid coordinates
-						int p_x = round((iNextWaypoint.x-bias.x)/X_RES);
-						int p_y = round((iNextWaypoint.y-bias.y)/Y_RES);
+						int p_x = round((iNextWaypoint.x)/X_RES)+bias_x;
+						int p_y = round((iNextWaypoint.y)/Y_RES)+bias_y;
 						
 						dPrint(1, "On the map navigating from %d, %d to %d, %d", grid_x,grid_y,p_x,p_y);
 					
@@ -1553,8 +1550,8 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 						//Unbias nodes
 						for (int i = 0; i < (int)iAstarPath.size(); i++) {
 							node n = iAstarPath.at(i);
-							n.x += bias.x;
-							n.y += bias.y;
+							n.x -= bias_x;
+							n.y -= bias_y;
 							iAstarPath.at(i) = n;
 						}
 										

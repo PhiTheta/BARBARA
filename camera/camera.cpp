@@ -195,28 +195,12 @@ float Angle_Calculation(int X_center, int Y_center, int width, int height){
 	float Y_diff, X_diff;
 	float angle;
 	
-		if ((X_center == (int)width/2)&&(Y_center == (int)height/2)) {
-			angle = M_PI/2;
-		}if((X_center == 0)&&(Y_center == 0)){
-			angle = M_PI/2;
-		}else if ((X_center == width) &&(Y_center == 0)){
-			angle = M_PI/2;
-		}else if ((X_center == 0) &&(Y_center == height)){
-			angle = M_PI/2;
-		}else if ((X_center == width) &&(Y_center == height)){
-			angle = M_PI/2;
-		}else if ((X_center == 0) &&(Y_center == height)){
-			angle = M_PI/2;
-		}else if ((X_center == width) &&(Y_center == 0)){
-			angle = M_PI/2;
-		}
-		else {
+		
 				Y_diff = (height/2) - Y_center;
 			
 				X_diff = (width/2) - X_center;
 			
-			angle = (M_PI/2) -atan2(Y_diff,X_diff);
-		}
+			angle = atan2(Y_diff, X_diff);
 
 return angle;
 }
@@ -264,7 +248,7 @@ Camera_Obstacle_Alarm Find_Object(unsigned char *image, int width, int height, i
 Camera_Distance Postion_Object(int X_center, int Y_center, int width, int height){
 
 		Camera_Distance Distance1; 
-		Distance1.distance = Distance_Calculation(X_center, Y_center, width, height); 
+		Distance1.distance = fabs(Distance_Calculation(X_center, Y_center, width, height)); 
 		Distance1.angle = Angle_Calculation(X_center, Y_center, width, height); 
 
 		return Distance1;

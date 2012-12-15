@@ -13,10 +13,10 @@
 #include "astar/pathplan2.h"
 #include "../camera/camera.h"
 
-#define MAP_WIDTH		4.5
-#define MAP_HEIGHT		3.7
-#define MAP_ROWS		(37*3)
-#define MAP_COLS		(45*3)
+#define MAP_WIDTH		4.5*2
+#define MAP_HEIGHT		3.7*2
+#define MAP_ROWS		(37*2*3)
+#define MAP_COLS		(45*2*3)
 #define X_RES			(MAP_WIDTH/MAP_COLS)
 #define Y_RES			(MAP_HEIGHT/MAP_ROWS)
 
@@ -137,7 +137,7 @@ private:
   vector<MaCI::Position::TPose2D> smooth(vector<node> astar_path, float weight_data, float weight_smooth, float tolerance);
   vector<ISGridPoint> getEuclideanLaserData();
   void mapFromGridMap(vector<ISGridPoint> map, int **output);
-  TPoint mapMatrixRepresentation(vector<TPoint> map, int **output);
+  void mapMatrixRepresentation(vector<TPoint> map, int **output);
   void analyzeCamera();
   TPoint worldPoint(float distance, float angle, float y_peripheral_offset, const MaCI::Position::TPose2D *pose);
 };
