@@ -17,8 +17,6 @@
 using namespace std;
 bool skip_window=false;
 
-//#include "astar/pathplan2.h"
-
 #ifdef ENABLE_SERIALLINK
 # include "SerialLink_Client.hpp"
 #endif
@@ -31,24 +29,6 @@ bool skip_window=false;
 #include <SDL/SDL_gfxPrimitives.h>
 #endif
 
-/* Steps to take in the Matrix
-30,27---Start
-35,27
-35,11
-35,5
-21,5
-21,14
-25,14
-15,6
-9,6
-5,6
-5,23
-15,23
-22,23
-22,27
-30,27---End
-*/
-
 #define DIST_MARGIN		0.1
 #define ANGLE_MARGIN	0.1
 #define MIN_WSPEED		0.5
@@ -59,11 +39,6 @@ bool skip_window=false;
 #define WEIGHT_DATA     0.12
 #define WEIGHT_SMOOTH	0.12
 #define A_TOLERANCE 	0.00001
-
-
-SDL_Surface *mainScreen = NULL;
-
-
 
 int iPreviousDirection = 0;
 
@@ -405,6 +380,8 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
           if (iMotionThreadActive) {
             dPrint(1,"Terminating MotionDemo...");
             iMotionThreadActive = false;
+            iRobotState = RobotStateIdle;
+            iNextWaypoint.x = iNextWaypoint.y = 0;
             CThread::WaitThread(KThreadMotionDemo);
             dPrint(1,"Terminated.");
 
@@ -636,6 +613,14 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 		
 			SDL_FillRect(screen , &rect , SDL_MapRGB(screen->format , 255 , 255 , 255 ) );
 		  
+			//Draw home rect
+			SDL_Rect homeRect;
+			homeRect.x = center_x+iBasePoint.x-10;
+			homeRect.y = center_y+iBasePoint.y-10;
+			homeRect.w = 20; 
+			homeRect.h = 20; 
+			SDL_FillRect(screen , &homeRect , SDL_MapRGB(screen->format , 0,0,0) );
+			
 			
 			float robot_x = center_x+(pose->y-iBasePoint.x)*m;
 			float robot_y = center_y+(pose->x-iBasePoint.y)*m;
@@ -657,8 +642,9 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 				laser.x = laser_end_x;
 				laser.y = laser_end_y;
 				laserPoints.push_back(laser);
-				lineRGBA(screen, laser_x, laser_y, laser_end_x, laser_end_y, 255, 215, 215, 255);
+				lineRGBA(screen, laser_x, laser_y, laser_end_x, laser_end_y, 255, 155, 155, 50);
 			}
+			
 			
 			//Draw robot, heading and laser device position
 			float pointer_end_x = robot_x - m_a*sin(-pose->a);
@@ -696,17 +682,33 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 				}
 			}
 			
-			//Draw a navigation pointer
-			float waypoint_x = center_x+(pose->y-iNextWaypoint.x)*m;
-			float waypoint_y = center_y+(pose->x-iNextWaypoint.y)*m;
-			lineRGBA(screen, robot_x, robot_y, waypoint_x, waypoint_y, 0, 0, 0, 255);
+			char mystr[255];
+			if (iRobotState == RobotStateGoHome || iRobotState == RobotStateGoToStone || (iRobotState == RobotStateAvoidObstacle && (iPreviousRobotState == RobotStateGoHome || iPreviousRobotState == RobotStateGoToStone))) { 
+				//Draw a navigation pointer
+				float waypoint_x = center_x+(pose->y-iNextWaypoint.x)*m;
+				float waypoint_y = center_y+(pose->x-iNextWaypoint.y)*m;
+				lineRGBA(screen, robot_x, robot_y, waypoint_x, waypoint_y, 0, 0, 0, 255);
+				sprintf(mystr, "Going to: %f, %f", iNextWaypoint.x,iNextWaypoint.y);
+				stringRGBA(screen, screen->w-450, 610,  mystr, 0, 255, 0, 150);
+			}
+			
+			
+			const char stateStr[9][60] = {
+				"State: Idle",
+				"State: Wandering",
+				"State: Avoiding obstacle",
+				"State: Navigating to a ball",
+				"State: Navigating home",
+				"State: Openning gripper",
+				"State: Closing gripper",
+				"State: Moving away from the base",
+				"State: Self destruct"
+			};
 			
 			//Draw odometry
-			char mystr[255];
 			sprintf(mystr, "Odometry: %f, %f, %f", pose->y, pose->x, pose->a);
 			stringRGBA(screen, screen->w-450, 590,  mystr, 0, 255, 0, 150);
-			sprintf(mystr, "Going to: %f, %f", iNextWaypoint.x,iNextWaypoint.y);
-			stringRGBA(screen, screen->w-450, 600,  mystr, 0, 255, 0, 150);
+			stringRGBA(screen, screen->w-450, 600,  stateStr[iRobotState], 0, 255, 0, 150);
 		}
 	}
     
@@ -975,103 +977,85 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 				//iPose = pd.GetPose2D();
 				dPrint(1, "ODO %f %f %f", pose->y, pose->x, pose->a);
 					
-				if (iRobotState == RobotStateMoveAway) {
-					dPrint(1, "Moving away from the base");
-					r_acc = 0.1;
-					r_speed = -0.15;
-					r_wspeed = 0;
-					iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
+				
+				r_acc = 0.1;
+				r_speed = 0.0;
+				r_wspeed = 0.0;
+				
+				//Read laser sensor;
+				float distance = iSmallestDistanceToObject.distance;
+				float angle = iSmallestDistanceToObject.angle;
+				
+				float proximityAlertLimit = 0.4;
+				//Allow it to come closer on sides
+				if (angle < proximityAngleLimit && angle > -proximityAngleLimit) {
+					proximityAlertLimit = 0.3;
+				}
+				
+				bool obstacle = distance <= proximityAlertLimit && distance >= 0;
+				
+				if (obstacle && iRobotState != RobotStateAvoidObstacle) {
+					iInterface.iMotionCtrl->SetStop();
 					ownSleep_ms(20);
-					if (fabs(iBasePoint.x-pose->y) > 0.2 || fabs(iBasePoint.y-pose->x) > 0.2) {
-						iInterface.iMotionCtrl->SetStop();
-						iRobotState = RobotStateShutdown;
-						dPrintLCGreen(1, "Mission complete. Good bye!");
-					}
+					iPreviousRobotState = iRobotState;
+					iRobotState = RobotStateAvoidObstacle;
+					continue;
 				}
-				else if (iRobotState == RobotStateOpenGripper) {
-					dPrint(1, "Openning gripper");
-					bool open = iInterface.iServoCtrl->SetPosition(0, KServoUserServo_0);
-			        ownSleep_ms(200);	
-			        if (open) {
-						iRobotState = RobotStateMoveAway;
-						continue;
-					}
-				}	
-				else if (iRobotState == RobotStateCloseGripper) {
-					dPrint(1, "Closing grippper");
-					bool closed = iInterface.iServoCtrl->SetPosition(M_PI/3-M_PI/20, KServoUserServo_0);
-			        ownSleep_ms(200);	
-			        if (closed) {
-						iNextWaypoint = iBasePoint;
-						iRobotState = RobotStateGoHome;
-						continue;
-					}
-				}
-				else if (iRobotState == RobotStateAvoidObstacle) {
-					
-					dPrint(1, "Avoiding obstacle");
-					
-					r_acc = 0.1;
-					r_speed = 0.0;
-					r_wspeed = 0.0;
-					
-					//Read laser sensor;
-					float distance = iSmallestDistanceToObject.distance;
-					float angle = iSmallestDistanceToObject.angle;
-					
-					float proximityAlertLimit = 0.4;
-					//Allow it to come closer on sides
-					if (angle < proximityAngleLimit && angle > -proximityAngleLimit) {
-						proximityAlertLimit = 0.3;
-					}
-					
-					bool obstacle = distance <= proximityAlertLimit && distance >= 0;
-					
-					if (obstacle) {
-						TurnDirection direction = iPreviousDirection != DirectionUnknown && iPreviousDirection != DirectionForward ? iPreviousDirection : angle < 0 ? DirectionRight : DirectionLeft;
-						
-						//Turn by random angle
-						r_wspeed = angspeed;
-						r_wspeed *= direction == DirectionLeft ? 1 : -1;
-						dPrint(1,"Obstacle at distance %f angle %f. Ang spd %f", distance, angle, r_wspeed);
-						iPreviousDirection = direction;
+				else {
+					if (iRobotState == RobotStateMoveAway) {
+						dPrint(1, "Moving away from the base");
+						r_acc = 0.1;
+						r_speed = -0.15;
+						r_wspeed = 0;
 						iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
 						ownSleep_ms(20);
+						if (fabs(iBasePoint.x-pose->y) > 0.2 || fabs(iBasePoint.y-pose->x) > 0.2) {
+							iInterface.iMotionCtrl->SetStop();
+							iRobotState = RobotStateShutdown;
+							dPrintLCGreen(1, "Mission complete. Good bye!");
+						}
 					}
-					else {
-						iInterface.iMotionCtrl->SetStop();
-						ownSleep_ms(20);
-						iRobotState = iPreviousRobotState;
-						continue;
+					else if (iRobotState == RobotStateOpenGripper) {
+						dPrint(1, "Openning gripper");
+						bool open = iInterface.iServoCtrl->SetPosition(0, KServoUserServo_0);
+				        ownSleep_ms(200);	
+				        if (open) {
+							iRobotState = RobotStateMoveAway;
+							continue;
+						}
+					}	
+					else if (iRobotState == RobotStateCloseGripper) {
+						dPrint(1, "Closing grippper");
+						bool closed = iInterface.iServoCtrl->SetPosition(M_PI/3-M_PI/20, KServoUserServo_0);
+				        ownSleep_ms(200);	
+				        if (closed) {
+							iNextWaypoint = iBasePoint;
+							iRobotState = RobotStateGoHome;
+							continue;
+						}
 					}
-				}
-				else if (iRobotState == RobotStateWander) {
-					
-					dPrint(1, "Wandering");
-					r_acc = 0.1;
-					r_speed = 0.0;
-					r_wspeed = 0.0;
-					
-					//Read laser sensor;
-					float distance = iSmallestDistanceToObject.distance;
-					float angle = iSmallestDistanceToObject.angle;
-					
-					float proximityAlertLimit = 0.4;
-					//Allow it to come closer on sides
-					if (angle < proximityAngleLimit && angle > -proximityAngleLimit) {
-						proximityAlertLimit = 0.3;
+					else if (iRobotState == RobotStateAvoidObstacle) {
+						if (obstacle) {
+							TurnDirection direction = iPreviousDirection != DirectionUnknown && iPreviousDirection != DirectionForward ? iPreviousDirection : angle < 0 ? DirectionRight : DirectionLeft;
+							
+							//Turn by random angle
+							r_wspeed = angspeed;
+							r_wspeed *= direction == DirectionLeft ? 1 : -1;
+							dPrint(1,"Obstacle at distance %f angle %f. Ang spd %f", distance, angle, r_wspeed);
+							iPreviousDirection = direction;
+							iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
+							ownSleep_ms(20);
+						}
+						else {
+							iInterface.iMotionCtrl->SetStop();
+							ownSleep_ms(20);
+							iRobotState = iPreviousRobotState;
+							continue;
+						}
 					}
-					
-					bool obstacle = distance <= proximityAlertLimit && distance >= 0;
-					
-					if (obstacle) {
-						iInterface.iMotionCtrl->SetStop();
-						ownSleep_ms(20);
-						iPreviousRobotState = iRobotState;
-						iRobotState = RobotStateAvoidObstacle;
-						continue;
-					}
-					else {
+					else if (iRobotState == RobotStateWander) {
+						
+						dPrint(1, "Wandering");
 						if (cnt++ >= 60) {
 							cnt = 0;
 							analyzeCamera();
@@ -1085,174 +1069,179 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 						iPreviousDirection = DirectionForward;
 						iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
 						ownSleep_ms(20);
-					}
+						
+					} else if (iRobotState == RobotStateGoHome || RobotStateGoToStone) {
+						
+						dPrint(1, "Navigating to %f, %f", iNextWaypoint.x,iNextWaypoint.y);
 					
-				} else if (iRobotState == RobotStateGoHome || RobotStateGoToStone) {
-					
-					dPrint(1, "Navigating to %f, %f", iNextWaypoint.x,iNextWaypoint.y);
-					
-				     ////Run A*
-					if (!iHasPlan) {
-					
-						int *searchMap = new int[MAP_COLS*MAP_ROWS];
-						mapMatrixRepresentation(iMap, &searchMap);
-						//dPrint(1,"Map:");
-						//for (int i = 0; i < MAP_ROWS; i++) {
-							//string line;
-							//for (int j = 0; j < MAP_COLS; j++) {
-								//line.append((const char *)(searchMap[i*MAP_COLS+j] == 1 ? "1" : "0"));
+					     ////Run A*
+						if (!iHasPlan) {
+						
+							//Stop before thinking a lot
+							iInterface.iMotionCtrl->SetStop();
+							ownSleep_ms(20);
+							
+									
+							int *searchMap = new int[MAP_COLS*MAP_ROWS];
+							mapMatrixRepresentation(iMap, &searchMap);
+							//dPrint(1,"Map:");
+							//for (int i = 0; i < MAP_ROWS; i++) {
+								//string line;
+								//for (int j = 0; j < MAP_COLS; j++) {
+									//line.append((const char *)(searchMap[i*MAP_COLS+j] == 1 ? "1" : "0"));
+								//}
+								//dPrint(1,"%s",line.c_str());
 							//}
-							//dPrint(1,"%s",line.c_str());
-						//}
+							
+							//Bias the map because it contains negative values also
+							//But AStar algorithm needs only non-negative values
+							
+							int bias_x = MAP_COLS/2;
+							int bias_y = MAP_ROWS/2;
+							dPrint(1, "Map is biased by %d, %d", bias_x, bias_y);
+							
+							//Current robot position in grid coordinates
+							int grid_x = round((pose->y)/X_RES)+bias_x;
+							int grid_y = round((pose->x)/Y_RES)+bias_y;
+							
+							//Waypoint position in grid coordinates
+							int p_x = round((iNextWaypoint.x)/X_RES)+bias_x;
+							int p_y = round((iNextWaypoint.y)/Y_RES)+bias_y;
+							
+							dPrint(1, "On the map navigating from %d, %d to %d, %d", grid_x,grid_y,p_x,p_y);
 						
-						//Bias the map because it contains negative values also
-						//But AStar algorithm needs only non-negative values
-						
-						int bias_x = MAP_COLS/2;
-						int bias_y = MAP_ROWS/2;
-						dPrint(1, "Map is biased by %d, %d", bias_x, bias_y);
-						
-						//Current robot position in grid coordinates
-						int grid_x = round((pose->y)/X_RES)+bias_x;
-						int grid_y = round((pose->x)/Y_RES)+bias_y;
-						
-						//Waypoint position in grid coordinates
-						int p_x = round((iNextWaypoint.x)/X_RES)+bias_x;
-						int p_y = round((iNextWaypoint.y)/Y_RES)+bias_y;
-						
-						dPrint(1, "On the map navigating from %d, %d to %d, %d", grid_x,grid_y,p_x,p_y);
-					
-						pathplan2 plan;
-						iAstarPath = plan.get_graph(searchMap,MAP_COLS,MAP_ROWS,grid_x,grid_y,p_x,p_y);
-						
-						//Unbias nodes
-						for (int i = 0; i < (int)iAstarPath.size(); i++) {
-							node n = iAstarPath.at(i);
-							n.x -= bias_x;
-							n.y -= bias_y;
-							iAstarPath.at(i) = n;
+							pathplan2 plan;
+							iAstarPath = plan.get_graph(searchMap,MAP_COLS,MAP_ROWS,grid_x,grid_y,p_x,p_y);
+							
+							//Unbias nodes
+							for (int i = 0; i < (int)iAstarPath.size(); i++) {
+								node n = iAstarPath.at(i);
+								n.x -= bias_x;
+								n.y -= bias_y;
+								iAstarPath.at(i) = n;
+							}
+											
+							iSmoothAstarPath = smooth(iAstarPath,WEIGHT_DATA,WEIGHT_SMOOTH,A_TOLERANCE);
+							
+							iHasPlan = true;
+							
+							//Start with node 1, because node 0 is current position;
+							step = 1;
 						}
-										
-						iSmoothAstarPath = smooth(iAstarPath,WEIGHT_DATA,WEIGHT_SMOOTH,A_TOLERANCE);
-						
-						iHasPlan = true;
-						
-						//Start with node 1, because node 0 is current position;
-						step = 1;
-					}
-		
-	                if (step < (int)iSmoothAstarPath.size()-1) {
-						       
-						dPrint(1,"Driving to a intermediate waypoint %d of %d", step, iSmoothAstarPath.size());
-						node present = iAstarPath.at(step);
-						Ax_next_stop_meters = present.x * X_RES;
-						Ay_next_stop_meters = present.y * Y_RES;
-						
-						TPose2D next_stop = iSmoothAstarPath.at(step+1);
-						x_next_stop_meters = next_stop.x * X_RES;
-						y_next_stop_meters = next_stop.y * Y_RES;
-						
-						if (iMotionState == MotionStateIdle) { 
-							dPrint(1,"Motion Control State: Idle");
-						}
-						else if (iMotionState == MotionStateDriving) { 
-							dPrint(1,"Motion Control State: Driving");
-						}
-						else if (iMotionState == MotionStateTurning) { 
-							dPrint(1,"Motion Control State: Turning");
-						}
-						
-						dPrint(1, "Intermediate waypoint %f, %f. Now at %f, %f",x_next_stop_meters, y_next_stop_meters,pose->x,pose->y);
-						
-						float dx = x_next_stop_meters - pose->x;
-						float dy = y_next_stop_meters - pose->y;
-						
-						float alpha = atan2(dy, dx)-pose->a;
-	                    alpha = truncate(alpha);
-						dPrint(1, "Angle error %f", alpha);
-								
-						double rho = sqrt(dx*dx + dy*dy);
-						if (rho <= DIST_MARGIN) {
-                            step++; 
-                            continue;
-						}
-						
-						switch (iMotionState) {
-							case MotionStateDriving:
-							{
-								//If angle is to large, rotate at one place instead of driving
-								if (fabs(alpha) > 1.3) {
-									iInterface.iMotionCtrl->SetStop();
+			
+		                if (step < (int)iSmoothAstarPath.size()-1) {
+							       
+							dPrint(1,"Driving to a intermediate waypoint %d of %d", step, iSmoothAstarPath.size());
+							node present = iAstarPath.at(step);
+							Ax_next_stop_meters = present.x * X_RES;
+							Ay_next_stop_meters = present.y * Y_RES;
+							
+							TPose2D next_stop = iSmoothAstarPath.at(step+1);
+							x_next_stop_meters = next_stop.x * X_RES;
+							y_next_stop_meters = next_stop.y * Y_RES;
+							
+							if (iMotionState == MotionStateIdle) { 
+								dPrint(1,"Motion Control State: Idle");
+							}
+							else if (iMotionState == MotionStateDriving) { 
+								dPrint(1,"Motion Control State: Driving");
+							}
+							else if (iMotionState == MotionStateTurning) { 
+								dPrint(1,"Motion Control State: Turning");
+							}
+							
+							dPrint(1, "Intermediate waypoint %f, %f. Now at %f, %f",x_next_stop_meters, y_next_stop_meters,pose->x,pose->y);
+							
+							float dx = x_next_stop_meters - pose->x;
+							float dy = y_next_stop_meters - pose->y;
+							
+							float alpha = atan2(dy, dx)-pose->a;
+		                    alpha = truncate(alpha);
+							dPrint(1, "Angle error %f", alpha);
+									
+							double rho = sqrt(dx*dx + dy*dy);
+							if (rho <= DIST_MARGIN) {
+	                            step++; 
+	                            continue;
+							}
+							
+							switch (iMotionState) {
+								case MotionStateDriving:
+								{
+									//If angle is to large, rotate at one place instead of driving
+									if (fabs(alpha) > 1.3) {
+										iInterface.iMotionCtrl->SetStop();
+										ownSleep_ms(20);
+										iMotionState = MotionStateTurning;
+										continue;
+									}
+									
+									dPrint(1,"Going forward");
+									
+									r_speed = 0.05;
+									r_wspeed = K_alpha * alpha;
+									
+									if (fabs(alpha) > M_PI_2) {
+										r_speed *= -1;
+									}
+									
+									if (r_speed >= 0.0 || r_speed == -0.0) {
+										r_speed = MAX(MIN(r_speed, MAX_SPEED), MIN_SPEED);
+									}
+									else {
+										r_speed = MIN(MAX(r_speed, -MAX_SPEED), -MIN_SPEED);	
+									}									
+									r_wspeed = MAX(MIN(r_wspeed, MAX_WSPEED), -MAX_WSPEED);
+									           
+									iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
 									ownSleep_ms(20);
+								}
+								break;
+								
+								
+								
+								case MotionStateTurning:
+								{
+									
+									dPrint(1,"Turning");
+										    
+								    r_speed = 0;                    
+									r_wspeed = MAGIC_CNST*alpha;
+									if (r_wspeed >= 0.0 || r_wspeed == -0.0) {
+										r_wspeed = MAX(MIN(r_wspeed, MAX_WSPEED), MIN_WSPEED);
+									}
+									else {
+										r_wspeed = MIN(MAX(r_wspeed, -MAX_WSPEED), -MIN_WSPEED);	
+									}
+									
+			                        if(fabs(alpha) < ANGLE_MARGIN) {
+			                            iInterface.iMotionCtrl->SetStop();
+			                            ownSleep_ms(20);
+			                            iMotionState = MotionStateDriving;
+										continue;
+			                        } else {
+			                            iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
+			                            ownSleep_ms(20);
+			                        }
+								}
+					            break;                
+					                
+				                case MotionStateIdle:
+									dPrint(1,"Starting motion");
 									iMotionState = MotionStateTurning;
-									continue;
+								break;
 								}
-								
-								dPrint(1,"Going forward");
-								
-								r_speed = 0.05;
-								r_wspeed = K_alpha * alpha;
-								
-								if (fabs(alpha) > M_PI_2) {
-									r_speed *= -1;
-								}
-								
-								if (r_speed >= 0.0 || r_speed == -0.0) {
-									r_speed = MAX(MIN(r_speed, MAX_SPEED), MIN_SPEED);
-								}
-								else {
-									r_speed = MIN(MAX(r_speed, -MAX_SPEED), -MIN_SPEED);	
-								}									
-								r_wspeed = MAX(MIN(r_wspeed, MAX_WSPEED), -MAX_WSPEED);
-								           
-								iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
-								ownSleep_ms(20);
-							}
-							break;
-							
-							
-							
-							case MotionStateTurning:
-							{
-								
-								dPrint(1,"Turning");
-									    
-							    r_speed = 0;                    
-								r_wspeed = MAGIC_CNST*alpha;
-								if (r_wspeed >= 0.0 || r_wspeed == -0.0) {
-									r_wspeed = MAX(MIN(r_wspeed, MAX_WSPEED), MIN_WSPEED);
-								}
-								else {
-									r_wspeed = MIN(MAX(r_wspeed, -MAX_WSPEED), -MIN_WSPEED);	
-								}
-								
-		                        if(fabs(alpha) < ANGLE_MARGIN) {
-		                            iInterface.iMotionCtrl->SetStop();
-		                            ownSleep_ms(20);
-		                            iMotionState = MotionStateDriving;
-									continue;
-		                        } else {
-		                            iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
-		                            ownSleep_ms(20);
-		                        }
-							}
-				            break;                
-				                
-			                case MotionStateIdle:
-								dPrint(1,"Starting motion");
-								iMotionState = MotionStateTurning;
-							break;
-							}
-					}
-					else {
-						dPrintLCGreen(1,"Waypoint reached");
-						iHasPlan = false;
-						iMotionState = MotionStateIdle;
-						if (iRobotState == RobotStateGoToStone) {
-							iRobotState = RobotStateCloseGripper;
 						}
-						else if (iRobotState == RobotStateGoHome) {
-							iRobotState = RobotStateOpenGripper;
+						else {
+							dPrintLCGreen(1,"Waypoint reached");
+							iHasPlan = false;
+							iMotionState = MotionStateIdle;
+							if (iRobotState == RobotStateGoToStone) {
+								iRobotState = RobotStateCloseGripper;
+							}
+							else if (iRobotState == RobotStateGoHome) {
+								iRobotState = RobotStateOpenGripper;
+							}
 						}
 					}
 				}
@@ -1448,14 +1437,6 @@ void CJ2B2Demo::analyzeCamera()
 	using namespace MaCI::Image;
 	using namespace MaCI::Position;
 	
-	
-	//dPrintLCRed(1, "ACHTUNG!!!! SIMULATED WAYPOINT!!!");
-	//iNextWaypoint.x = 1.5;
-	//iNextWaypoint.y = 0;
-	//iRobotState = RobotStateGoToStone;
-	//return;
-	
-	
 	dPrint(1, "Analyzing camera image");
     if (iLastCameraImage.GetImageDataType() == KImageDataJPEG &&
         iLastCameraImage.GetImageDataPtr() != NULL) {
@@ -1514,7 +1495,14 @@ void CJ2B2Demo::analyzeCamera()
 		}
 	}
 	else {
-		dPrint(1, "Image not available");
+		//dPrint(1, "Image not available");
+		
+		//Assuming that we are in the simulator
+		dPrintLCRed(1, "ACHTUNG!!!! SIMULATED WAYPOINT!!!");
+		iNextWaypoint.x = iBasePoint.x+1.5;
+		iNextWaypoint.y = iBasePoint.y+3;
+		iRobotState = RobotStateGoToStone;
+		return;
 	}
 }
 
