@@ -77,430 +77,8 @@ inline float truncate(float val)
 	}
 	return val;
 }
-
-ISGridPose2D CJ2B2Demo::gridPoseFromTPose(const MaCI::Position::TPose2D *pose)
-{
-	ISGridPose2D res;
-	//double xind = pose->x;
-	//double yind = pose->y;
-	//xind /= (X_RES*2);
-	//yind /= (Y_RES*2);
-	//res.x = round(xind);
-	//res.y = round(yind);
-	res.x = round(pose->x/X_RES);
-	res.y = round(pose->y/Y_RES);
-	res.angle = (double)pose->a;
-	
-	//if (!iPauseOn) dPrint(1,"%f,%f -> %f,%f -> %d,%d [%f,%f]", pose->x, pose->y, xind, yind, res.x, res.y, X_RES, Y_RES);
-	
-	return res;
-}
-
-void CJ2B2Demo::analyzeCamera()
-{
-	using namespace MaCI::Image;
-	using namespace MaCI::Position;
-	
-	
-	//dPrintLCRed(1, "ACHTUNG!!!! SIMULATED WAYPOINT!!!");
-	//iNextWaypoint.x = 1.5;
-	//iNextWaypoint.y = 0;
-	//iRobotState = RobotStateGoToStone;
-	//return;
-	
-	
-	dPrint(1, "Analyzing camera image");
-    if (iLastCameraImage.GetImageDataType() == KImageDataJPEG &&
-        iLastCameraImage.GetImageDataPtr() != NULL) {
-			
-		CImageContainer container;
-		int res = mkdir("vision", S_IRWXU|S_IRGRP|S_IXGRP);
-		if (res == -1) {
-			//Folder exists
-		}
-		else if (res == 0) {
-			dPrint(1, "Folder 'vision' created. Check the camera images there");
-		}
-		ownTime_ms_t time = ownTime_get_ms();
-		Lock();
-		container.Copy(iLastCameraImage);
-		Unlock();
-		char mystr[255];
-		sprintf(mystr, "vision/Image_%lld.jpg", time);
-		container.WriteImageToFile(mystr);
-		container.ConvertTo(KImageDataRGB);
-		dPrint(1, "Converted JPG image to RGB raw");
-		TImageInfo info = container.GetImageInfoRef();
-		
-		if (info.imagedatatype != KImageDataRGB) {
-			dPrintLCRed(1,"Image data is not RGB!!!");
-			return;
-		}
-		else {
-			//int size = (int)container.GetImageDataSize();
-			//dPrintLCYellow(1, "Image size %d", size);
-			//for (int i = 0; i < 5; i++) {
-				//dPrintLCYellow(1, "%X", (unsigned char)container.GetImageDataPtr()[i]);
-			//}
-		}
-      
-		int search_color_flag = 1; //1 - red, 2 - blue
-		Camera_Obstacle_Alarm answer = Find_Object((unsigned char *)container.GetImageDataPtr(), info.imagewidth, info.imageheight, search_color_flag);
-		
-		if (answer.Red_Target_Flag) {
-			dPrint(1, "Found something red");
-			Camera_Distance distance = Postion_Object(answer.c_x, answer.c_y, info.imagewidth, info.imageheight);
-			dPrint(1, "Found a ball (distance %f; angle %f)", distance.distance, distance.angle);
-			
-			//Create a waypoint here
-			//In Universal frame
-			int posSeq = -1;
-			CPositionData pd;
-			if (iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000)) {
-				const TPose2D *pose = pd.GetPose2D();
-				iNextWaypoint = worldPoint(distance.distance, distance.angle, iLaserPosition.x, pose);
-				iRobotState = RobotStateGoToStone;
-			}
-		}
-		else {
-			dPrint(1, "Did not find anything");
-		}
-	}
-	else {
-		dPrint(1, "Image not available");
-	}
-}
-
-vector<ISGridPoint> CJ2B2Demo::getEuclideanLaserData()
-{
-	vector<ISGridPoint> euclideanLaserData;
-	int index = 0;
-	for(EACH_IN_i(iLastLaserDistanceArray)) {
-		ISGridPoint point = euclideanLaserPoint(i->distance, i->angle, iLaserPosition.x, X_RES, Y_RES, index++);
-		if (!setContainsPoint(euclideanLaserData, point)) {
-			euclideanLaserData.push_back(point);
-		}
-	}
-	return euclideanLaserData;
-}
-
-void CJ2B2Demo::mapFromGridMap(vector<ISGridPoint> map, int **output)
-{
-	for (int i = 0; i < MAP_ROWS; i++) {
-		for (int j = 0; j < MAP_COLS; j++) {
-			int idx = i*MAP_COLS+j;
-			(*output)[idx] = 1;
-			for (vector<ISGridPoint>::iterator iterator = map.begin(); iterator < map.end(); iterator++) {
-				ISGridPoint point = *iterator;
-				if (point.x == j && point.y == i) {
-					(*output)[idx] = 0;
-					break;
-				}
-			}
-		}
-	}
-}
-
-void CJ2B2Demo::mapMatrixRepresentation(vector<TPoint> map, int **output)
-{
-	for (int i = 0; i < MAP_ROWS; i++) {
-		for (int j = 0; j < MAP_COLS; j++) {
-			int idx = i*MAP_COLS+j;
-			(*output)[idx] = 1;
-			for (vector<TPoint>::iterator iterator = map.begin(); iterator < map.end(); iterator++) {
-				TPoint point = *iterator;
-				//Biased by min_x, min_y
-				int x = round((point.x)/X_RES);
-				int y = round((point.y)/Y_RES);
-				x += MAP_COLS/2; //Bias by half of the map to have all values positive
-				y += MAP_ROWS/2; //Bias by half of the map to have all values positive
-				if (x == j && y == i) {
-					(*output)[idx] = 0;
-				//	dPrintLCYellow(1,"Settign cell %d,%d as an obstacle", x,y);
-					break;
-				}
-			}
-		}
-	}
-}
-
-vector<MaCI::Position::TPose2D> CJ2B2Demo::smooth(vector<node> astar_path, float weight_data, float weight_smooth, float tolerance)
-{
-	using namespace MaCI::Position;
-	
-	vector<TPose2D> smooth_astar_path, original_astar_path;
-	
-	//Make a Copy of X and Y
-	for(unsigned int i = 0; i < astar_path.size(); i++) {
-		node originalNode = astar_path.at(i);
-		TPose2D pose;
-		pose.x = (float)originalNode.x;
-		pose.y = (float)originalNode.y;
-		smooth_astar_path.push_back(pose);
-		original_astar_path.push_back(pose);
-	}
-	
-	float change = tolerance;
-	TPose2D aux_i, new_point, aux_i1, aux_i2, initial_XY;
-	
-	while(change >= tolerance) {
-		change = 0.0;					
-		for(int i = 1; i < (int)smooth_astar_path.size()-1; i++) {
-			aux_i = smooth_astar_path.at(i);
-			aux_i1 = smooth_astar_path.at(i-1);
-			aux_i2 = smooth_astar_path.at(i+1);
-			new_point = aux_i;
-			initial_XY = original_astar_path.at(i);
-			
-			new_point.x += weight_data * (initial_XY.x - new_point.x);
-			new_point.x += weight_smooth * ( ( aux_i1.x + aux_i2.x) - ( 2.0 * new_point.x) );
-			change += fabs(aux_i.x - new_point.x);
-			smooth_astar_path.at(i) = new_point;
-			
-			new_point.y += weight_data * (initial_XY.y - new_point.y);
-			new_point.y += weight_smooth * ( ( aux_i1.y + aux_i2.y) - ( 2.0 * new_point.y) );
-			change += fabs(aux_i.y - new_point.y);
-			smooth_astar_path.at(i) = new_point;
-		}
-	}
-	
-	return smooth_astar_path;
-}
-
-void CJ2B2Demo::runSLAM()
-{	
-	using namespace MaCI::Position;
-	using namespace MaCI;
-	
-	if (iInterface.iPositionOdometry) {
-		if (iFirstSLAMAttempt) {
-			//Get the readings and just save them without any SLAM
-			
-			//int posSeq = -1;
-			//CPositionData pd;
-			//if (iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000)) {
-				//const TPose2D *pose = pd.GetPose2D();
-				//if (pose) {
-					//iRobotPose = gridPoseFromTPose(pose);
-					iFirstSLAMAttempt = false;
-					//dPrint(1, "Getting very first odometry %d,%d,%f", iRobotPose.x,iRobotPose.y,iRobotPose.angle);
-					
-					//vector<ISGridPoint> euclideanLaserData = getEuclideanLaserData();
-					//updateMap(iRobotPose, euclideanLaserData);
-					//iPreviousLaserData = euclideanLaserData;
-				//}
-			//}
-			
-			return;
-		}
-		
-		//Get predicted position from odometry
-		MaCI::Position::CPositionData pd;
-		if (iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, iLastOdometryTimestamp.GetGimTime())) {
-			
-			const TPose2D *pose1 = pd.GetPose2D();	
-			//ISGridPose2D previousPose = gridPoseFromTPose(pose1);
-			
-			if (iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, iLastLaserTimestamp.GetGimTime())) {
-				
-				
-				const TPose2D *pose2 = pd.GetPose2D();
-				
-				
-				if (fabs(pose1->a-pose2->a) < 0.00001) {
-					updateMap(pose2, true);
-					iLastOdometryTimestamp = iLastLaserTimestamp;
-				}
-				
-				
-				/*
-				if (!iPauseOn) dPrint(1,"Previous time %f Current time %f", iLastOdometryTimestamp.GetGimTime().getTimeInSeconds(), iLastLaserTimestamp.GetGimTime().getTimeInSeconds());
-				
-				iPreviousOdometryPose = previousPose;
-				iOdometryPose = gridPoseFromTPose(pose2);
-				iPreviousRobotPose = iRobotPose;
-				
-				if (!iPauseOn) dPrint(1, "Previous odometry %d,%d,%f; Current odometry %d,%d,%f", iPreviousOdometryPose.x,iPreviousOdometryPose.y,iPreviousOdometryPose.angle, iOdometryPose.x,iOdometryPose.y,iOdometryPose.angle);
-			
-			
-				ISGridPose2D poseDifference;
-				poseDifference.x = iOdometryPose.x-iPreviousOdometryPose.x;
-				poseDifference.y = iOdometryPose.y-iPreviousOdometryPose.y;
-				poseDifference.angle = iOdometryPose.angle-iPreviousOdometryPose.angle;
-				
-				if ((poseDifference.x != 0 && poseDifference.y != 0) || poseDifference.angle > 0.01) {
-					iLastOdometryTimestamp = iLastLaserTimestamp;
-				}
-				
-				if (!iPauseOn) dPrint(1, "Difference %d,%d,%f", poseDifference.x,poseDifference.y,poseDifference.angle);
-		
-				ISGridPose2D predictedPose;
-				predictedPose.x = iRobotPose.x+poseDifference.x;
-				predictedPose.y = iRobotPose.y+poseDifference.y;
-				predictedPose.angle = iRobotPose.angle+poseDifference.angle;
-				
-				if (!iPauseOn) dPrint(1, "Previous pose %d,%d,%f; Predicted pose %d,%d,%f", iPreviousRobotPose.x,iPreviousRobotPose.y,iPreviousRobotPose.angle, predictedPose.x,predictedPose.y,predictedPose.angle);
-				
-				vector<ISGridPoint> euclideanLaserData = getEuclideanLaserData();
-			
-				//Generate different poses around predicted position
-				float maxRadius = 0.3;
-				int numCircles = 3;
-				int numPositionsInCircle = 8;
-				float maxAngleDeviation = 0.03;
-				int numAngles = 11;
-				
-				
-				vector<ISGridPose2D> generatedPoses = generateGridPoses(predictedPose, 
-																		maxRadius, 
-																		numCircles,
-																		numPositionsInCircle,
-																		maxAngleDeviation,
-																		numAngles,
-																		X_RES,
-																		Y_RES);
-				  
-				  
-				  
-				  
-				  
-				//Calculate transformed laser readings for each of the pose				
-			    int minDifference = INT_MAX;
-			    int minPoseDeviation = INT_MAX;
-			    int index = -1;
-				
-				//if (!iPauseOn) dPrint(1,"Real Position (%f,%f,%f) diff  %f", predictedPose.x, predictedPose.y, predictedPose.angle, fabs(sumDifferences(scanDistances, scanDistances)));
-			    for (unsigned int i = 0; i < generatedPoses.size(); i++) {
-					ISGridPose2D generatedPose = generatedPoses.at(i);
-					
-					
-					vector<ISGridPoint> transformedPoints = transformGridPoints(iPreviousRobotPose, generatedPose, iPreviousLaserData);
-					//vector<ISGridPoint> transformedPoints = transformGridPoints(predictedPose, generatedPose, euclideanLaserData);
-					int difference = sumGridDifferences(transformedPoints, euclideanLaserData, false);
-					int poseDeviation = getPoseDifference(generatedPose, predictedPose);
-					
-					if (poseDeviation == 0) {
-						if (!iPauseOn) dPrint(1,"Detected Predicted Pose (%d,%d,%f), diff  %d (pose diff %d)",generatedPose.x, generatedPose.y, generatedPose.angle, difference, poseDeviation);
-					}
-						
-					
-					//if (!iPauseOn) dPrint(1,"Pose (%d,%d,%f), diff  %d (pose d./J2B2-UI-example localhost 40022 FSRSim.J2B2iff %d)",generatedPose.x, generatedPose.y, generatedPose.angle, difference, poseDeviation);
-					
-					//Choose pose with smallest scans error and also the pose closest to the predicted one
-					if ((difference < minDifference) || (difference == minDifference && poseDeviation < minPoseDeviation)) {
-						index = i;
-						minDifference = difference;
-						minPoseDeviation = poseDeviation;
-					}
-				}
-				
-				
-				//Correct current pose
-				ISGridPose2D correctedPose = predictedPose; 
-				if (index >= 0 && index < (int)generatedPoses.size()) {
-					correctedPose = generatedPoses.at(index);
-					
-					if (!iPauseOn) dPrint(1,"Best pose [%d,%d,%f] Diff: %d, Dev: %d", correctedPose.x,correctedPose.y,correctedPose.angle, minDifference, minPoseDeviation);
-					
-					//Only if not rotating too much
-					if (fabs(poseDifference.angle) < 0.001) {
-						 updateMap(correctedPose, euclideanLaserData);
-					}
-				}
-				
-				iRobotPose = correctedPose;
-				iPreviousLaserData = euclideanLaserData;
-				
-				 
-		 */ 
-			 }
-		 }
-	}
-}
-
-TPoint CJ2B2Demo::worldPoint(float distance, float angle, float y_peripheral_offset, const MaCI::Position::TPose2D *pose)
-{
-	TPoint me;
-	me.x = pose->y;
-	me.y = pose->x;
-	
-	TPoint point;
-	
-	//Laser origin coordinates
-	point.x = distance*sin(angle);
-	point.y = distance*cos(angle);
-	
-	//Robot origin coordinates
-	point.y += y_peripheral_offset;
-	
-	//World coordinates
-	TPoint res;
-	res.x = point.x*cos(pose->a)+point.y*sin(pose->a)+me.x;
-	res.y = -point.x*sin(pose->a)+point.y*cos(pose->a)+me.y;
-	return res;
-}
-
-void CJ2B2Demo::updateMap(const MaCI::Position::TPose2D *pose, bool eraseUntrustedPoints)
-{
-	TPoint me;
-	me.x = pose->y;
-	me.y = pose->x;
-		
-	TPoint lidarPoint;
-	lidarPoint.x = iLaserPosition.x*sin(pose->a)+me.x;
-	lidarPoint.y = iLaserPosition.x*cos(pose->a)+me.y;
-	
-	for(EACH_IN_i(iLastLaserDistanceArray)) {
-		TPoint obstaclePoint = worldPoint(i->distance, i->angle, iLaserPosition.x, pose);
-		
-		bool exists = false;
-		for (vector<TPoint>::iterator iterator = iMap.begin(); iterator < iMap.end(); iterator++) {
-			TPoint mapPoint = *iterator;
-			if (fabs(obstaclePoint.x-mapPoint.x) < 0.01 && fabs(obstaclePoint.y-mapPoint.y) < 0.01) {
-				exists = true;
-				break;
-			}
-		}
-		
-		if (!exists) {
-			Lock();
-			iMap.push_back(obstaclePoint);
-			
-			if (eraseUntrustedPoints) {
-				//If obstacle lies on the laser point, eliminate it
-				for (vector<TPoint>::iterator iterator = iMap.begin(); iterator < iMap.end(); iterator++) {
-					TPoint mapPoint = *iterator;
-					if (fabs(obstaclePoint.x-lidarPoint.x) > 0.0001) {
-						float b = (obstaclePoint.x*lidarPoint.y-lidarPoint.x*obstaclePoint.y)/(obstaclePoint.x-lidarPoint.x);
-						float k = (lidarPoint.y-b)/lidarPoint.x;
-						if ((k*mapPoint.x+b)-mapPoint.y < 0.0001 &&
-						   ((mapPoint.x-lidarPoint.x > 0.001 && mapPoint.x-obstaclePoint.x < -0.001) || 
-						    (mapPoint.x-lidarPoint.x < -0.001 && mapPoint.x-obstaclePoint.x > 0.001)) &&
-						   ((mapPoint.y-lidarPoint.y > 0.001 && mapPoint.y-obstaclePoint.y < -0.001) ||
-						    (mapPoint.y-lidarPoint.y < -0.001 && mapPoint.y-obstaclePoint.y > 0.001))
-						 ) {
-							iMap.erase(iterator);
-						}
-					}
-				}
-			}
-			Unlock();
-		}
-		
-	}
-}
 	
 
-void CJ2B2Demo::updateMap(ISGridPose2D pose, vector<ISGridPoint> scans)
-{
-	for (vector<ISGridPoint>::iterator iterator = scans.begin(); iterator < scans.end(); iterator++) {
-		ISGridPoint point = *iterator;
-		ISGridPoint obstaclePoint = robotToWorld(pose, point);
-		if (!setContainsPoint(iGridMap, obstaclePoint)) {
-			iGridMap.push_back(obstaclePoint);
-		}
-	}
-}
 	
 
 //*****************************************************************************
@@ -1381,7 +959,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
     bool tilted = false;
     while (!tilted) {
 		tilted = iInterface.iServoCtrl->SetPosition(-M_PI/10, KServoCameraPTUTilt);
-		ownSleep_ms(200);
+		ownSleep_ms(2000);
 	}
 	dPrint(1, "Camera tilted");
 	
@@ -1392,7 +970,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 	while(iDemoActive && iMotionThreadActive && (aIterations == -1 || iterations < aIterations) && iRobotState != RobotStateShutdown) {
 		if (iInterface.iMotionCtrl) {
 			if (iInterface.iPositionOdometry) {
-				iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000);
+				iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, iLastLaserTimestamp.GetGimTime());
 				const TPose2D *pose = pd.GetPose2D();
 				//iPose = pd.GetPose2D();
 				dPrint(1, "ODO %f %f %f", pose->y, pose->x, pose->a);
@@ -1834,3 +1412,427 @@ int CJ2B2Demo::ThreadFunction(const int aThreadNumber)
 //*****************************************************************************
 //*****************************************************************************
 //*****************************************************************************
+
+
+void CJ2B2Demo::updateMap(ISGridPose2D pose, vector<ISGridPoint> scans)
+{
+	for (vector<ISGridPoint>::iterator iterator = scans.begin(); iterator < scans.end(); iterator++) {
+		ISGridPoint point = *iterator;
+		ISGridPoint obstaclePoint = robotToWorld(pose, point);
+		if (!setContainsPoint(iGridMap, obstaclePoint)) {
+			iGridMap.push_back(obstaclePoint);
+		}
+	}
+}
+
+ISGridPose2D CJ2B2Demo::gridPoseFromTPose(const MaCI::Position::TPose2D *pose)
+{
+	ISGridPose2D res;
+	//double xind = pose->x;
+	//double yind = pose->y;
+	//xind /= (X_RES*2);
+	//yind /= (Y_RES*2);
+	//res.x = round(xind);
+	//res.y = round(yind);
+	res.x = round(pose->x/X_RES);
+	res.y = round(pose->y/Y_RES);
+	res.angle = (double)pose->a;
+	
+	//if (!iPauseOn) dPrint(1,"%f,%f -> %f,%f -> %d,%d [%f,%f]", pose->x, pose->y, xind, yind, res.x, res.y, X_RES, Y_RES);
+	
+	return res;
+}
+
+void CJ2B2Demo::analyzeCamera()
+{
+	using namespace MaCI::Image;
+	using namespace MaCI::Position;
+	
+	
+	//dPrintLCRed(1, "ACHTUNG!!!! SIMULATED WAYPOINT!!!");
+	//iNextWaypoint.x = 1.5;
+	//iNextWaypoint.y = 0;
+	//iRobotState = RobotStateGoToStone;
+	//return;
+	
+	
+	dPrint(1, "Analyzing camera image");
+    if (iLastCameraImage.GetImageDataType() == KImageDataJPEG &&
+        iLastCameraImage.GetImageDataPtr() != NULL) {
+			
+		CImageContainer container;
+		int res = mkdir("vision", S_IRWXU|S_IRGRP|S_IXGRP);
+		if (res == -1) {
+			//Folder exists
+		}
+		else if (res == 0) {
+			dPrint(1, "Folder 'vision' created. Check the camera images there");
+		}
+		ownTime_ms_t time = ownTime_get_ms();
+		Lock();
+		container.Copy(iLastCameraImage);
+		Unlock();
+		char mystr[255];
+		sprintf(mystr, "vision/Image_%lld.jpg", time);
+		container.WriteImageToFile(mystr);
+		container.ConvertTo(KImageDataRGB);
+		dPrint(1, "Converted JPG image to RGB raw");
+		TImageInfo info = container.GetImageInfoRef();
+		
+		if (info.imagedatatype != KImageDataRGB) {
+			dPrintLCRed(1,"Image data is not RGB!!!");
+			return;
+		}
+		else {
+			//int size = (int)container.GetImageDataSize();
+			//dPrintLCYellow(1, "Image size %d", size);
+			//for (int i = 0; i < 5; i++) {
+				//dPrintLCYellow(1, "%X", (unsigned char)container.GetImageDataPtr()[i]);
+			//}
+		}
+      
+		int search_color_flag = 1; //1 - red, 2 - blue
+		Camera_Obstacle_Alarm answer = Find_Object((unsigned char *)container.GetImageDataPtr(), info.imagewidth, info.imageheight, search_color_flag);
+		
+		if (answer.Red_Target_Flag) {
+			dPrint(1, "Found something red");
+			Camera_Distance distance = Postion_Object(answer.c_x, answer.c_y, info.imagewidth, info.imageheight);
+			dPrint(1, "Found a ball (distance %f; angle %f)", distance.distance, distance.angle);
+			
+			//Create a waypoint here
+			//In Universal frame
+			CPositionData pd;
+			
+			if (iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, iLastLaserTimestamp.GetGimTime())) {
+				const TPose2D *pose = pd.GetPose2D();
+				iNextWaypoint = worldPoint(distance.distance, distance.angle, iLaserPosition.x, pose);
+				iRobotState = RobotStateGoToStone;
+			}
+		}
+		else {
+			dPrint(1, "Did not find anything");
+		}
+	}
+	else {
+		dPrint(1, "Image not available");
+	}
+}
+
+vector<ISGridPoint> CJ2B2Demo::getEuclideanLaserData()
+{
+	vector<ISGridPoint> euclideanLaserData;
+	int index = 0;
+	for(EACH_IN_i(iLastLaserDistanceArray)) {
+		ISGridPoint point = euclideanLaserPoint(i->distance, i->angle, iLaserPosition.x, X_RES, Y_RES, index++);
+		if (!setContainsPoint(euclideanLaserData, point)) {
+			euclideanLaserData.push_back(point);
+		}
+	}
+	return euclideanLaserData;
+}
+
+void CJ2B2Demo::mapFromGridMap(vector<ISGridPoint> map, int **output)
+{
+	for (int i = 0; i < MAP_ROWS; i++) {
+		for (int j = 0; j < MAP_COLS; j++) {
+			int idx = i*MAP_COLS+j;
+			(*output)[idx] = 1;
+			for (vector<ISGridPoint>::iterator iterator = map.begin(); iterator < map.end(); iterator++) {
+				ISGridPoint point = *iterator;
+				if (point.x == j && point.y == i) {
+					(*output)[idx] = 0;
+					break;
+				}
+			}
+		}
+	}
+}
+
+void CJ2B2Demo::mapMatrixRepresentation(vector<TPoint> map, int **output)
+{
+	for (int i = 0; i < MAP_ROWS; i++) {
+		for (int j = 0; j < MAP_COLS; j++) {
+			int idx = i*MAP_COLS+j;
+			(*output)[idx] = 1;
+			for (vector<TPoint>::iterator iterator = map.begin(); iterator < map.end(); iterator++) {
+				TPoint point = *iterator;
+				//Biased by min_x, min_y
+				int x = round((point.x)/X_RES);
+				int y = round((point.y)/Y_RES);
+				x += MAP_COLS/2; //Bias by half of the map to have all values positive
+				y += MAP_ROWS/2; //Bias by half of the map to have all values positive
+				if (x == j && y == i) {
+					(*output)[idx] = 0;
+				//	dPrintLCYellow(1,"Settign cell %d,%d as an obstacle", x,y);
+					break;
+				}
+			}
+		}
+	}
+}
+
+vector<MaCI::Position::TPose2D> CJ2B2Demo::smooth(vector<node> astar_path, float weight_data, float weight_smooth, float tolerance)
+{
+	using namespace MaCI::Position;
+	
+	vector<TPose2D> smooth_astar_path, original_astar_path;
+	
+	//Make a Copy of X and Y
+	for(unsigned int i = 0; i < astar_path.size(); i++) {
+		node originalNode = astar_path.at(i);
+		TPose2D pose;
+		pose.x = (float)originalNode.x;
+		pose.y = (float)originalNode.y;
+		smooth_astar_path.push_back(pose);
+		original_astar_path.push_back(pose);
+	}
+	
+	float change = tolerance;
+	TPose2D aux_i, new_point, aux_i1, aux_i2, initial_XY;
+	
+	while(change >= tolerance) {
+		change = 0.0;					
+		for(int i = 1; i < (int)smooth_astar_path.size()-1; i++) {
+			aux_i = smooth_astar_path.at(i);
+			aux_i1 = smooth_astar_path.at(i-1);
+			aux_i2 = smooth_astar_path.at(i+1);
+			new_point = aux_i;
+			initial_XY = original_astar_path.at(i);
+			
+			new_point.x += weight_data * (initial_XY.x - new_point.x);
+			new_point.x += weight_smooth * ( ( aux_i1.x + aux_i2.x) - ( 2.0 * new_point.x) );
+			change += fabs(aux_i.x - new_point.x);
+			smooth_astar_path.at(i) = new_point;
+			
+			new_point.y += weight_data * (initial_XY.y - new_point.y);
+			new_point.y += weight_smooth * ( ( aux_i1.y + aux_i2.y) - ( 2.0 * new_point.y) );
+			change += fabs(aux_i.y - new_point.y);
+			smooth_astar_path.at(i) = new_point;
+		}
+	}
+	
+	return smooth_astar_path;
+}
+
+void CJ2B2Demo::runSLAM()
+{	
+	using namespace MaCI::Position;
+	using namespace MaCI;
+	
+	if (iInterface.iPositionOdometry) {
+		if (iFirstSLAMAttempt) {
+			//Get the readings and just save them without any SLAM
+			
+			//int posSeq = -1;
+			//CPositionData pd;
+			//if (iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000)) {
+				//const TPose2D *pose = pd.GetPose2D();
+				//if (pose) {
+					//iRobotPose = gridPoseFromTPose(pose);
+					iFirstSLAMAttempt = false;
+					//dPrint(1, "Getting very first odometry %d,%d,%f", iRobotPose.x,iRobotPose.y,iRobotPose.angle);
+					
+					//vector<ISGridPoint> euclideanLaserData = getEuclideanLaserData();
+					//updateMap(iRobotPose, euclideanLaserData);
+					//iPreviousLaserData = euclideanLaserData;
+				//}
+			//}
+			
+			return;
+		}
+		
+		//Get predicted position from odometry
+		MaCI::Position::CPositionData pd;
+		if (iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, iLastOdometryTimestamp.GetGimTime())) {
+			
+			const TPose2D *pose1 = pd.GetPose2D();	
+			//ISGridPose2D previousPose = gridPoseFromTPose(pose1);
+			
+			if (iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, iLastLaserTimestamp.GetGimTime())) {
+				
+				
+				const TPose2D *pose2 = pd.GetPose2D();
+				
+				
+				if (fabs(pose1->a-pose2->a) < 0.00001) {
+					updateMap(pose2, true);
+					iLastOdometryTimestamp = iLastLaserTimestamp;
+				}
+				
+				
+				/*
+				if (!iPauseOn) dPrint(1,"Previous time %f Current time %f", iLastOdometryTimestamp.GetGimTime().getTimeInSeconds(), iLastLaserTimestamp.GetGimTime().getTimeInSeconds());
+				
+				iPreviousOdometryPose = previousPose;
+				iOdometryPose = gridPoseFromTPose(pose2);
+				iPreviousRobotPose = iRobotPose;
+				
+				if (!iPauseOn) dPrint(1, "Previous odometry %d,%d,%f; Current odometry %d,%d,%f", iPreviousOdometryPose.x,iPreviousOdometryPose.y,iPreviousOdometryPose.angle, iOdometryPose.x,iOdometryPose.y,iOdometryPose.angle);
+			
+			
+				ISGridPose2D poseDifference;
+				poseDifference.x = iOdometryPose.x-iPreviousOdometryPose.x;
+				poseDifference.y = iOdometryPose.y-iPreviousOdometryPose.y;
+				poseDifference.angle = iOdometryPose.angle-iPreviousOdometryPose.angle;
+				
+				if ((poseDifference.x != 0 && poseDifference.y != 0) || poseDifference.angle > 0.01) {
+					iLastOdometryTimestamp = iLastLaserTimestamp;
+				}
+				
+				if (!iPauseOn) dPrint(1, "Difference %d,%d,%f", poseDifference.x,poseDifference.y,poseDifference.angle);
+		
+				ISGridPose2D predictedPose;
+				predictedPose.x = iRobotPose.x+poseDifference.x;
+				predictedPose.y = iRobotPose.y+poseDifference.y;
+				predictedPose.angle = iRobotPose.angle+poseDifference.angle;
+				
+				if (!iPauseOn) dPrint(1, "Previous pose %d,%d,%f; Predicted pose %d,%d,%f", iPreviousRobotPose.x,iPreviousRobotPose.y,iPreviousRobotPose.angle, predictedPose.x,predictedPose.y,predictedPose.angle);
+				
+				vector<ISGridPoint> euclideanLaserData = getEuclideanLaserData();
+			
+				//Generate different poses around predicted position
+				float maxRadius = 0.3;
+				int numCircles = 3;
+				int numPositionsInCircle = 8;
+				float maxAngleDeviation = 0.03;
+				int numAngles = 11;
+				
+				
+				vector<ISGridPose2D> generatedPoses = generateGridPoses(predictedPose, 
+																		maxRadius, 
+																		numCircles,
+																		numPositionsInCircle,
+																		maxAngleDeviation,
+																		numAngles,
+																		X_RES,
+																		Y_RES);
+				  
+				  
+				  
+				  
+				  
+				//Calculate transformed laser readings for each of the pose				
+			    int minDifference = INT_MAX;
+			    int minPoseDeviation = INT_MAX;
+			    int index = -1;
+				
+				//if (!iPauseOn) dPrint(1,"Real Position (%f,%f,%f) diff  %f", predictedPose.x, predictedPose.y, predictedPose.angle, fabs(sumDifferences(scanDistances, scanDistances)));
+			    for (unsigned int i = 0; i < generatedPoses.size(); i++) {
+					ISGridPose2D generatedPose = generatedPoses.at(i);
+					
+					
+					vector<ISGridPoint> transformedPoints = transformGridPoints(iPreviousRobotPose, generatedPose, iPreviousLaserData);
+					//vector<ISGridPoint> transformedPoints = transformGridPoints(predictedPose, generatedPose, euclideanLaserData);
+					int difference = sumGridDifferences(transformedPoints, euclideanLaserData, false);
+					int poseDeviation = getPoseDifference(generatedPose, predictedPose);
+					
+					if (poseDeviation == 0) {
+						if (!iPauseOn) dPrint(1,"Detected Predicted Pose (%d,%d,%f), diff  %d (pose diff %d)",generatedPose.x, generatedPose.y, generatedPose.angle, difference, poseDeviation);
+					}
+						
+					
+					//if (!iPauseOn) dPrint(1,"Pose (%d,%d,%f), diff  %d (pose d./J2B2-UI-example localhost 40022 FSRSim.J2B2iff %d)",generatedPose.x, generatedPose.y, generatedPose.angle, difference, poseDeviation);
+					
+					//Choose pose with smallest scans error and also the pose closest to the predicted one
+					if ((difference < minDifference) || (difference == minDifference && poseDeviation < minPoseDeviation)) {
+						index = i;
+						minDifference = difference;
+						minPoseDeviation = poseDeviation;
+					}
+				}
+				
+				
+				//Correct current pose
+				ISGridPose2D correctedPose = predictedPose; 
+				if (index >= 0 && index < (int)generatedPoses.size()) {
+					correctedPose = generatedPoses.at(index);
+					
+					if (!iPauseOn) dPrint(1,"Best pose [%d,%d,%f] Diff: %d, Dev: %d", correctedPose.x,correctedPose.y,correctedPose.angle, minDifference, minPoseDeviation);
+					
+					//Only if not rotating too much
+					if (fabs(poseDifference.angle) < 0.001) {
+						 updateMap(correctedPose, euclideanLaserData);
+					}
+				}
+				
+				iRobotPose = correctedPose;
+				iPreviousLaserData = euclideanLaserData;
+				
+				 
+		 */ 
+			 }
+		 }
+	}
+}
+
+TPoint CJ2B2Demo::worldPoint(float distance, float angle, float y_peripheral_offset, const MaCI::Position::TPose2D *pose)
+{
+	TPoint me;
+	me.x = pose->y;
+	me.y = pose->x;
+	
+	TPoint point;
+	
+	//Laser origin coordinates
+	point.x = distance*sin(angle);
+	point.y = distance*cos(angle);
+	
+	//Robot origin coordinates
+	point.y += y_peripheral_offset;
+	
+	//World coordinates
+	TPoint res;
+	res.x = point.x*cos(pose->a)+point.y*sin(pose->a)+me.x;
+	res.y = -point.x*sin(pose->a)+point.y*cos(pose->a)+me.y;
+	return res;
+}
+
+void CJ2B2Demo::updateMap(const MaCI::Position::TPose2D *pose, bool eraseUntrustedPoints)
+{
+	TPoint me;
+	me.x = pose->y;
+	me.y = pose->x;
+		
+	TPoint lidarPoint;
+	lidarPoint.x = iLaserPosition.x*sin(pose->a)+me.x;
+	lidarPoint.y = iLaserPosition.x*cos(pose->a)+me.y;
+	
+	for(EACH_IN_i(iLastLaserDistanceArray)) {
+		TPoint obstaclePoint = worldPoint(i->distance, i->angle, iLaserPosition.x, pose);
+		
+		bool exists = false;
+		for (vector<TPoint>::iterator iterator = iMap.begin(); iterator < iMap.end(); iterator++) {
+			TPoint mapPoint = *iterator;
+			if (fabs(obstaclePoint.x-mapPoint.x) < 0.01 && fabs(obstaclePoint.y-mapPoint.y) < 0.01) {
+				exists = true;
+				break;
+			}
+		}
+		
+		if (!exists) {
+			Lock();
+			iMap.push_back(obstaclePoint);
+			
+			if (eraseUntrustedPoints) {
+				//If obstacle lies on the laser point, eliminate it
+				for (vector<TPoint>::iterator iterator = iMap.begin(); iterator < iMap.end(); iterator++) {
+					TPoint mapPoint = *iterator;
+					if (fabs(obstaclePoint.x-lidarPoint.x) > 0.0001) {
+						float b = (obstaclePoint.x*lidarPoint.y-lidarPoint.x*obstaclePoint.y)/(obstaclePoint.x-lidarPoint.x);
+						float k = (lidarPoint.y-b)/lidarPoint.x;
+						if ((k*mapPoint.x+b)-mapPoint.y < 0.0001 &&
+						   ((mapPoint.x-lidarPoint.x > 0.001 && mapPoint.x-obstaclePoint.x < -0.001) || 
+						    (mapPoint.x-lidarPoint.x < -0.001 && mapPoint.x-obstaclePoint.x > 0.001)) &&
+						   ((mapPoint.y-lidarPoint.y > 0.001 && mapPoint.y-obstaclePoint.y < -0.001) ||
+						    (mapPoint.y-lidarPoint.y < -0.001 && mapPoint.y-obstaclePoint.y > 0.001))
+						 ) {
+							iMap.erase(iterator);
+						}
+					}
+				}
+			}
+			Unlock();
+		}
+		
+	}
+}
