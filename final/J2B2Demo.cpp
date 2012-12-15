@@ -1854,25 +1854,25 @@ void CJ2B2Demo::updateMap(const MaCI::Position::TPose2D *pose, bool eraseUntrust
 					if (fabs(obstaclePoint.x-lidarPoint.x) > 0.0001) {
 						float b = (obstaclePoint.x*lidarPoint.y-lidarPoint.x*obstaclePoint.y)/(obstaclePoint.x-lidarPoint.x);
 						float k = (lidarPoint.y-b)/lidarPoint.x;
-						//if ((k*mapPoint.x+b)-mapPoint.y < 0.0001 &&
-						   //((mapPoint.x-lidarPoint.x > 0.001 && mapPoint.x-obstaclePoint.x < -0.001) || 
-						    //(mapPoint.x-lidarPoint.x < -0.001 && mapPoint.x-obstaclePoint.x > 0.001)) &&
-						   //((mapPoint.y-lidarPoint.y > 0.001 && mapPoint.y-obstaclePoint.y < -0.001) ||
-						    //(mapPoint.y-lidarPoint.y < -0.001 && mapPoint.y-obstaclePoint.y > 0.001))
-						 //) {
-							//iMap.erase(iterator);
-						//}
-						float obstacleDis=sqrt(obstaclePoint.x*obstaclePoint.x + obstaclePoint.y*obstaclePoint.y);
-						float mapPointDis=sqrt(mapPoint.x*mapPoint.x + mapPoint.y*mapPoint.y);
-						float lidarPointDis=sqrt(lidarPoint.x*lidarPoint.x + lidarPoint.y*lidarPoint.y);
-						float mapPointAng= atan2(mapPoint.y,mapPoint.x);
-						float lidarPointAng=atan2(lidarPoint.y,lidarPoint.x);
-						if ((k*mapPoint.x+b)-mapPoint.y < 0.0001 && 
-						    (( obstacleDis  <  mapPointDis) && (mapPointDis < lidarPointDis )) &&
-						    ( fabs( mapPointAng - lidarPointAng)<0.1)
-						    ){
-						    iMap.erase(iterator); 
-						}						
+						if ((k*mapPoint.x+b)-mapPoint.y < 0.0001 &&
+						   ((mapPoint.x-lidarPoint.x > 0.001 && mapPoint.x-obstaclePoint.x < -0.001) || 
+						    (mapPoint.x-lidarPoint.x < -0.001 && mapPoint.x-obstaclePoint.x > 0.001)) &&
+						   ((mapPoint.y-lidarPoint.y > 0.001 && mapPoint.y-obstaclePoint.y < -0.001) ||
+						    (mapPoint.y-lidarPoint.y < -0.001 && mapPoint.y-obstaclePoint.y > 0.001))
+						 ) {
+							iMap.erase(iterator);
+						}
+						//float obstacleDis=sqrt(obstaclePoint.x*obstaclePoint.x + obstaclePoint.y*obstaclePoint.y);
+						//float mapPointDis=sqrt(mapPoint.x*mapPoint.x + mapPoint.y*mapPoint.y);
+						//float lidarPointDis=sqrt(lidarPoint.x*lidarPoint.x + lidarPoint.y*lidarPoint.y);
+						//float mapPointAng= atan2(mapPoint.y,mapPoint.x);
+						//float lidarPointAng=atan2(lidarPoint.y,lidarPoint.x);
+						//if ((k*mapPoint.x+b)-mapPoint.y < 0.0001 && 
+						    //(( obstacleDis  <  mapPointDis) && (mapPointDis < lidarPointDis )) &&
+						    //( fabs( mapPointAng - lidarPointAng)<0.0001)
+						    //){
+						    //iMap.erase(iterator); 
+						//}						
 						
 						
 					}
