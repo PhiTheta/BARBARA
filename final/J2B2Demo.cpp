@@ -686,8 +686,8 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 			char mystr[255];
 			if (iRobotState == RobotStateGoHome || iRobotState == RobotStateGoToStone || (iRobotState == RobotStateAvoidObstacle && (iPreviousRobotState == RobotStateGoHome || iPreviousRobotState == RobotStateGoToStone))) { 
 				//Draw a navigation pointer
-				float waypoint_x = center_x+(pose->y-iNextWaypoint.x)*m;
-				float waypoint_y = center_y+(pose->x-iNextWaypoint.y)*m;
+				float waypoint_x = center_x+(iNextWaypoint.x-iBasePoint.x)*m;
+				float waypoint_y = center_y+(iNextWaypoint.y-iBasePoint.y)*m;
 				lineRGBA(screen, robot_x, robot_y, waypoint_x, waypoint_y, 0, 0, 0, 255);
 				sprintf(mystr, "Going to: %f, %f", iNextWaypoint.x,iNextWaypoint.y);
 				stringRGBA(screen, screen->w-450, 610,  mystr, 0, 255, 0, 150);
@@ -1508,10 +1508,14 @@ void CJ2B2Demo::analyzeCamera()
 		//dPrint(1, "Image not available");
 		
 		//Assuming that we are in the simulator
-		dPrintLCRed(1, "ACHTUNG!!!! SIMULATED WAYPOINT!!!");
-		iNextWaypoint.x = iBasePoint.x+0.5;
-		iNextWaypoint.y = iBasePoint.y+1;
-		iRobotState = RobotStateGoToStone;
+		CPositionData pd;
+		if (iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, iLastLaserTimestamp.GetGimTime())) {
+			const TPose2D *pose = pd.GetPose2D();
+			dPrintLCRed(1, "ACHTUNG!!!! SIMULATED WAYPOINT!!!");
+			iNextWaypoint.x = iBasePoint.x-sin(pose->a)*0.5;
+			iNextWaypoint.y = iBasePoint.y+cos(pose->a)*0.5;
+			iRobotState = RobotStateGoToStone;
+		}
 		return;
 	}
 }
