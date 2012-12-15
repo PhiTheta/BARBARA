@@ -12,6 +12,7 @@
 #include <iostream>
 #include <fstream>
 #include <ostream>
+#include <sys/stat.h>
 
 using namespace std;
 bool skip_window=false;
@@ -97,52 +98,56 @@ ISGridPose2D CJ2B2Demo::gridPoseFromTPose(const MaCI::Position::TPose2D *pose)
 
 void CJ2B2Demo::analyzeCamera()
 {
-	dPrintLCRed(1, "ACHTUNG!!!! SIMULATED WAYPOINT!!!");
-	iNextWaypoint.x = 1.5;
-	iNextWaypoint.y = 0;
-	iRobotState = RobotStateGoToStone;
-	return;
+	using namespace MaCI::Image;
+	
+	//dPrintLCRed(1, "ACHTUNG!!!! SIMULATED WAYPOINT!!!");
+	//iNextWaypoint.x = 1.5;
+	//iNextWaypoint.y = 0;
+	//iRobotState = RobotStateGoToStone;
+	//return;
 	
 	
 	dPrint(1, "Analyzing camera image");
-    if (iLastCameraImage.GetImageDataType() == MaCI::Image::KImageDataJPEG &&
+    if (iLastCameraImage.GetImageDataType() == KImageDataJPEG &&
         iLastCameraImage.GetImageDataPtr() != NULL) {
-		SDL_Surface *surface = NULL;
-		SDL_RWops *rw = NULL;
-		
-		MaCI::Image::CImageContainer container;
-		iLastCameraImage.WriteImageToFile("Image.jpg");
-		Lock();
-		container.Copy(iLastCameraImage);
-		container.WriteImageToFile ("CopiedImage.jpg");
-		
-		Unlock();
-		exit(1);
-		rw = SDL_RWFromMem((void*)container.GetImageDataPtr(), container.GetImageDataSize());               
-						 
-		surface = IMG_LoadJPG_RW(rw);
-		if (surface == NULL) {
-			dPrint(1, "Could not get an image");
-			return;
+			
+		CImageContainer container;
+		int res = mkdir("vision", S_IRWXU|S_IRGRP|S_IXGRP);
+		if (res == -1) {
+			//Folder exists
 		}
-		//SDL_BlitSurface(surface, NULL, mainScreen, &rcDest);
-		
-		dPrint(1, "Got an image");
+		else if (res == 0) {
+			dPrint(1, "Folder 'vision' created. Check the camera images there");
+		}
+		ownTime_ms_t time = ownTime_get_ms();
+		Lock();
+		iLastCameraImage.WriteImageToFile("Image.jpg");
+		container.Copy(iLastCameraImage);
+		Unlock();
+		char mystr[255];
+		sprintf(mystr, "vision/Image_%lld.jpg", time);
+		container.WriteImageToFile(mystr);
+		container.ConvertTo(KImageDataRGB);
+		dPrint(1, "Converted JPG image to RGB raw");
+		TImageInfo info = container.GetImageInfoRef();
       
-		Camera_Obstacle_Alarm answer = Find_Object(surface, 1);	//1 - red, 2 - blue
+		int search_color_flag = 1; //1 - red, 2 - blue
+		Camera_Obstacle_Alarm answer = Find_Object((unsigned char *)container.GetImageDataPtr(), info.imagewidth, info.imageheight, search_color_flag);
 		
-		if (answer.Red_Obstacle_Flag) {
-			Camera_Distance distance = Postion_Object(answer.c_x, answer.c_y);
+		if (answer.Red_Target_Flag) {
+			dPrint(1, "Found something red");
+			Camera_Distance distance = Postion_Object(answer.c_x, answer.c_y, info.imagewidth, info.imageheight);
 			distance.distance = fabs(distance.distance);
-			dPrint(1, "Found something (distance %f; angle %f)", distance.distance, distance.angle);
+			dPrint(1, "Found a ball (distance %f; angle %f)", distance.distance, distance.angle);
 			
 			//Create a waypoint here
 			//In Universal frame
 			//iNextWaypoint = laserToWorld(distance.distance, distance.angle, iRobotPose, iLaserPosition.x, X_RES, Y_RES);
 			iRobotState = RobotStateGoToStone;
 		}
-		//SDL_FreeSurface(surface);
-		
+		else {
+			dPrint(1, "Did not find anything");
+		}
 	}
 	else {
 		dPrint(1, "Image not available");
@@ -979,7 +984,7 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 
 
     // Then, apply the PTU manual control parameters.
-    if (iPTUDemoActive == false &&
+    if (iMotionThreadActive == false && iPTUDemoActive == false &&
         ownTime_get_ms_since(ptucommand_last_sent) > 100) {
       // Do movement
       ptu_pan += ptu_pan_delta * M_PI/20;
@@ -1345,8 +1350,15 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 		iBasePoint.x = pose->y;
 		iBasePoint.y = pose->x;
 	}
-   
+	
 	iInterface.iBehaviourCtrl->SetStart();
+   
+    bool tilted = false;
+    while (!tilted) {
+		tilted = iInterface.iServoCtrl->SetPosition(-M_PI/10, KServoCameraPTUTilt);
+		ownSleep_ms(200);
+	}
+	dPrint(1, "Camera tilted");
 	
 	float x_next_stop_meters,Ax_next_stop_meters;
 	float y_next_stop_meters,Ay_next_stop_meters;
