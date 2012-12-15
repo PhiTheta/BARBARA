@@ -631,12 +631,18 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 			SDL_FillRect(screen , &rect , SDL_MapRGB(screen->format , 255 , 255 , 255 ) );
 		  
 			//Draw home rect
+			SDL_Rect homeFrameRect;
+			homeFrameRect.x = center_x+iBasePoint.x-10;
+			homeFrameRect.y = center_y+iBasePoint.y-10;
+			homeFrameRect.w = 20; 
+			homeFrameRect.h = 20; 
 			SDL_Rect homeRect;
-			homeRect.x = center_x+iBasePoint.x-10;
-			homeRect.y = center_y+iBasePoint.y-10;
-			homeRect.w = 20; 
-			homeRect.h = 20; 
-			SDL_FillRect(screen , &homeRect , SDL_MapRGB(screen->format , 0,0,0) );
+			homeRect.x = center_x+iBasePoint.x-9;
+			homeRect.y = center_y+iBasePoint.y-9;
+			homeRect.w = 18; 
+			homeRect.h = 18; 
+			SDL_FillRect(screen , &homeFrameRect , SDL_MapRGB(screen->format , 0,0,0) );
+			SDL_FillRect(screen , &homeRect , SDL_MapRGB(screen->format , 255,255,255) );
 			
 			
 			float robot_x = center_x+(pose->y-iBasePoint.x)*m;
@@ -1683,8 +1689,6 @@ void CJ2B2Demo::runSLAM()
 			//ISGridPose2D previousPose = gridPoseFromTPose(pose1);
 			
 			if (iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, iLastLaserTimestamp.GetGimTime())) {
-				
-				
 				const TPose2D *pose2 = pd.GetPose2D();
 				
 				
@@ -1828,8 +1832,9 @@ void CJ2B2Demo::updateMap(const MaCI::Position::TPose2D *pose, bool eraseUntrust
 	me.y = pose->x;
 		
 	TPoint lidarPoint;
-	lidarPoint.x = iLaserPosition.x*sin(pose->a)+me.x;
-	lidarPoint.y = iLaserPosition.x*cos(pose->a)+me.y;
+	
+	lidarPoint.x = me.x - iLaserPosition.x*sin(-pose->a);
+	lidarPoint.y = me.y + iLaserPosition.x*cos(-pose->a);
 	
 	for(EACH_IN_i(iLastLaserDistanceArray)) {
 		TPoint obstaclePoint = worldPoint(i->distance, i->angle, iLaserPosition.x, pose);
@@ -1851,14 +1856,14 @@ void CJ2B2Demo::updateMap(const MaCI::Position::TPose2D *pose, bool eraseUntrust
 				//If obstacle lies on the laser point, eliminate it
 				for (vector<TPoint>::iterator iterator = iMap.begin(); iterator < iMap.end(); iterator++) {
 					TPoint mapPoint = *iterator;
-					if (fabs(obstaclePoint.x-lidarPoint.x) > 0.0001) {
+					if (fabs(obstaclePoint.x-lidarPoint.x) > 0.00001) {
 						float b = (obstaclePoint.x*lidarPoint.y-lidarPoint.x*obstaclePoint.y)/(obstaclePoint.x-lidarPoint.x);
 						float k = (lidarPoint.y-b)/lidarPoint.x;
-						if ((k*mapPoint.x+b)-mapPoint.y < 0.0001 &&
-						   ((mapPoint.x-lidarPoint.x > 0.001 && mapPoint.x-obstaclePoint.x < -0.001) || 
-						    (mapPoint.x-lidarPoint.x < -0.001 && mapPoint.x-obstaclePoint.x > 0.001)) &&
-						   ((mapPoint.y-lidarPoint.y > 0.001 && mapPoint.y-obstaclePoint.y < -0.001) ||
-						    (mapPoint.y-lidarPoint.y < -0.001 && mapPoint.y-obstaclePoint.y > 0.001))
+						if ((k*mapPoint.x+b)-mapPoint.y < 0.000001 &&
+						   ((mapPoint.x-lidarPoint.x > 0.0001 && mapPoint.x-obstaclePoint.x < -0.0001) || 
+						    (mapPoint.x-lidarPoint.x < -0.0001 && mapPoint.x-obstaclePoint.x > 0.0001)) &&
+						   ((mapPoint.y-lidarPoint.y > 0.0001 && mapPoint.y-obstaclePoint.y < -0.0001) ||
+						    (mapPoint.y-lidarPoint.y < -0.0001 && mapPoint.y-obstaclePoint.y > 0.0001))
 						 ) {
 							iMap.erase(iterator);
 						}
