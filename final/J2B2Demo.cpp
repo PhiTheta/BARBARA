@@ -722,21 +722,22 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 			}
 			
 			//Draw a star waypoints
-			if (iAstarPath.size() > 0) {
-				for (vector<node>::iterator iterator = iAstarPath.begin(); iterator < iAstarPath.end(); iterator++) {
-					node astar = *iterator;
+			if (iSmoothAstarPath.size() > 0) {
+				for (vector<MaCI::Position::TPose2D>::iterator iterator = iSmoothAstarPath.begin(); iterator < iSmoothAstarPath.end(); iterator++) {
+					MaCI::Position::TPose2D waypoint = *iterator;
+					
+			//filledTrigonRGBA(screen, pointerSDL1.x, pointerSDL1.y, pointerSDL2.x, pointerSDL2.y, pointerSDL3.x, pointerSDL3.y, 255, 0, 0, 255);
+					
 					TPoint nodePoint;
-					nodePoint.x = astar.x;
-					nodePoint.y = astar.y;
+					nodePoint.x = waypoint.x;
+					nodePoint.y = waypoint.y;
 					TPoint nodeSDL = SDLPoint(nodePoint);
 					circleRGBA(screen, nodeSDL.x, nodeSDL.y, (int)3, 255, 0, 255, 255);
 				}
 			}
 			
 			//Draw shortest distance
-			float distance = iSmallestDistanceToObject.distance;
-			float angle = iSmallestDistanceToObject.angle;
-			TPoint closestPoint = robotPoint(distance, angle, iLidarPoint.y);
+			TPoint closestPoint = robotPoint(iSmallestDistanceToObject.distance, iSmallestDistanceToObject.angle, iLidarPoint.y);
 			closestPoint = robotToWorldPoint(closestPoint, pose);
 			TPoint closestSDL = SDLPoint(closestPoint);
 			lineRGBA(screen, lidarSDL.x, lidarSDL.y, closestSDL.x, closestSDL.y, 0, 0, 255, 255);
@@ -1036,9 +1037,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 				r_wspeed = 0.0;
 				
 				//Check for obstacles;
-				float distance = iSmallestDistanceToObject.distance;
-				float angle = iSmallestDistanceToObject.angle;
-				TPoint closestPoint = robotPoint(distance, angle, iLidarPoint.y);
+				TPoint closestPoint = robotPoint(iSmallestDistanceToObject.distance, iSmallestDistanceToObject.angle, iLidarPoint.y);
 				iObstacleHazard = fabs(closestPoint.x) < CORRIDOR_RADIUS && closestPoint.y < CORRIDOR_DEPTH;				
 				if (iObstacleHazard && iRobotState != RobotStateAvoidObstacle) {
 					iInterface.iMotionCtrl->SetStop();
@@ -1094,12 +1093,12 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 					}
 					else if (iRobotState == RobotStateAvoidObstacle) {
 						if (iObstacleHazard) {
-							TurnDirection direction = iPreviousDirection != DirectionUnknown && iPreviousDirection != DirectionForward ? iPreviousDirection : angle < 0 ? DirectionRight : DirectionLeft;
+							TurnDirection direction = iPreviousDirection != DirectionUnknown && iPreviousDirection != DirectionForward ? iPreviousDirection : iSmallestDistanceToObject.angle > 0 ? DirectionRight : DirectionLeft;
 							
 							//Turn by random angle
 							r_wspeed = angspeed;
 							r_wspeed *= direction == DirectionLeft ? 1 : -1;
-							dPrint(1,"Obstacle at distance %f angle %f. Ang spd %f", distance, angle, r_wspeed);
+							dPrint(1,"Obstacle at distance %f angle %f. Ang spd %f", iSmallestDistanceToObject.distance, iSmallestDistanceToObject.angle, r_wspeed);
 							iPreviousDirection = direction;
 							iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
 							ownSleep_ms(20);
@@ -1534,8 +1533,8 @@ void CJ2B2Demo::analyzeCamera()
 		if (iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, iLastLaserTimestamp.GetGimTime())) {
 			const TPose2D *pose = pd.GetPose2D();
 			dPrintLCRed(1, "ACHTUNG!!!! SIMULATED WAYPOINT!!!");
-			iNextWaypoint.x = iBasePoint.x+sin(pose->a)*0.5;
-			iNextWaypoint.y = iBasePoint.y+cos(pose->a)*0.5;
+			iNextWaypoint.x = 1.14;//iBasePoint.x+sin(pose->a)*1.5;
+			iNextWaypoint.y = -1.17;//iBasePoint.y+cos(pose->a)*0.5;
 			iRobotState = RobotStateGoToStone;
 		}
 		return;
