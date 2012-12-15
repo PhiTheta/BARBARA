@@ -39,6 +39,7 @@ bool skip_window=false;
 #define WEIGHT_DATA     0.12
 #define WEIGHT_SMOOTH	0.12
 #define A_TOLERANCE 	0.00001
+#define CAM_LIDAR_DIST	0.09
 
 int iPreviousDirection = 0;
 
@@ -961,8 +962,13 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
     bool tilted = false;
     while (!tilted) {
 		tilted = iInterface.iServoCtrl->SetPosition(-M_PI/10, KServoCameraPTUTilt);
-		ownSleep_ms(2000);
 	}
+	ownSleep_ms(20);
+	tilted = false;
+	while (!tilted) {
+		tilted = iInterface.iServoCtrl->SetPosition(0, KServoUserServo_0);
+	}
+	ownSleep_ms(1000);
 	dPrint(1, "Camera tilted");
 	
 	float x_next_stop_meters,Ax_next_stop_meters;
@@ -1012,7 +1018,11 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 						if (fabs(iBasePoint.x-pose->y) > 0.2 || fabs(iBasePoint.y-pose->x) > 0.2) {
 							iInterface.iMotionCtrl->SetStop();
 							iRobotState = RobotStateShutdown;
+							iMotionThreadActive = false;
+				            iNextWaypoint.x = iNextWaypoint.y = 0;
 							dPrintLCGreen(1, "Mission complete. Good bye!");
+				            CThread::WaitThread(KThreadMotionDemo);
+				            dPrint(1,"Terminated.");
 						}
 					}
 					else if (iRobotState == RobotStateOpenGripper) {
@@ -1486,7 +1496,7 @@ void CJ2B2Demo::analyzeCamera()
 			
 			if (iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, iLastLaserTimestamp.GetGimTime())) {
 				const TPose2D *pose = pd.GetPose2D();
-				iNextWaypoint = worldPoint(distance.distance, distance.angle, iLaserPosition.x, pose);
+				iNextWaypoint = worldPoint(distance.distance, distance.angle, iLaserPosition.x+CAM_LIDAR_DIST, pose);
 				iRobotState = RobotStateGoToStone;
 			}
 		}
@@ -1499,8 +1509,8 @@ void CJ2B2Demo::analyzeCamera()
 		
 		//Assuming that we are in the simulator
 		dPrintLCRed(1, "ACHTUNG!!!! SIMULATED WAYPOINT!!!");
-		iNextWaypoint.x = iBasePoint.x+1.5;
-		iNextWaypoint.y = iBasePoint.y+3;
+		iNextWaypoint.x = iBasePoint.x+0.5;
+		iNextWaypoint.y = iBasePoint.y+1;
 		iRobotState = RobotStateGoToStone;
 		return;
 	}
