@@ -1860,10 +1860,10 @@ void CJ2B2Demo::updateMap(const MaCI::Position::TPose2D *pose, bool eraseUntrust
 						float b = (obstaclePoint.x*lidarPoint.y-lidarPoint.x*obstaclePoint.y)/(obstaclePoint.x-lidarPoint.x);
 						float k = (lidarPoint.y-b)/lidarPoint.x;
 						if ((k*mapPoint.x+b)-mapPoint.y < 0.000001 &&
-						   ((mapPoint.x-lidarPoint.x > 0.0001 && mapPoint.x-obstaclePoint.x < -0.0001) || 
-						    (mapPoint.x-lidarPoint.x < -0.0001 && mapPoint.x-obstaclePoint.x > 0.0001)) &&
-						   ((mapPoint.y-lidarPoint.y > 0.0001 && mapPoint.y-obstaclePoint.y < -0.0001) ||
-						    (mapPoint.y-lidarPoint.y < -0.0001 && mapPoint.y-obstaclePoint.y > 0.0001))
+						   ((mapPoint.x-lidarPoint.x > 0.01 && mapPoint.x-obstaclePoint.x < -0.01) || 
+						    (mapPoint.x-lidarPoint.x < -0.01 && mapPoint.x-obstaclePoint.x > 0.01)) &&
+						   ((mapPoint.y-lidarPoint.y > 0.01 && mapPoint.y-obstaclePoint.y < -0.01) ||
+						    (mapPoint.y-lidarPoint.y < -0.01 && mapPoint.y-obstaclePoint.y > 0.01))
 						 ) {
 							iMap.erase(iterator);
 						}
