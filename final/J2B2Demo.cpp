@@ -43,7 +43,7 @@ bool skip_window=false;
 #define GRIPPER_OPEN_ANGLE	0
 #define GRIPPER_CLOSED_ANGLE (M_PI/3-M_PI/20)
 #define CAMERA_TILT_ANGLE	(-M_PI/10)
-#define CORRIDOR_RADIUS	0.3
+#define CORRIDOR_RADIUS	0.25
 #define CORRIDOR_DEPTH	0.4
 
 int iPreviousDirection = 0;
@@ -661,28 +661,29 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 			
 			//Draw safe zone
 			TPoint close_left, close_right, far_left, far_right;
-			close_left.x = -CORRIDOR_RADIUS;
-			close_left.y = 0;
-			close_right.x = CORRIDOR_RADIUS;
-			close_right.y = 0;
-			far_left.x = -CORRIDOR_RADIUS;
-			far_left.y = CORRIDOR_DEPTH;
-			far_right.x = CORRIDOR_RADIUS;
-			far_right.y = CORRIDOR_DEPTH;
+			close_left.x = -CORRIDOR_RADIUS, close_left.y = 0;
+			close_right.x = CORRIDOR_RADIUS, close_right.y = 0;
+			far_left.x = -CORRIDOR_RADIUS, far_left.y = CORRIDOR_DEPTH;
+			far_right.x = CORRIDOR_RADIUS, far_right.y = CORRIDOR_DEPTH;
 			close_left = robotToWorldPoint(close_left, pose);
 			close_right = robotToWorldPoint(close_right, pose);
 			far_left = robotToWorldPoint(far_left, pose);
 			far_right = robotToWorldPoint(far_right, pose);
-			lineRGBA(screen, close_left.x, close_left.y, far_left.x, far_left.y, 255, 0, 255, 100);
-			lineRGBA(screen, far_left.x, far_left.y, far_right.x, far_right.y, 255, 0, 255, 100);
-			lineRGBA(screen, far_right.x, far_right.y, close_right.x, close_right.y, 255, 0, 255, 100);
-			lineRGBA(screen, close_right.x, close_right.y, close_left.x, close_left.y, 255, 0, 255, 100);
+			TPoint farLeftSDL = SDLPoint(far_left);
+			TPoint farRightSDL = SDLPoint(far_right);
+			TPoint closeLeftSDL = SDLPoint(close_left);
+			TPoint closeRightSDL = SDLPoint(close_right);
+			
+			lineRGBA(screen, closeLeftSDL.x, closeLeftSDL.y, farLeftSDL.x, farLeftSDL.y, 255, 0, 255, 100);
+			lineRGBA(screen, farLeftSDL.x, farLeftSDL.y, farRightSDL.x, farRightSDL.y, 255, 0, 255, 100);
+			lineRGBA(screen, farRightSDL.x, farRightSDL.y, closeRightSDL.x, closeRightSDL.y, 255, 0, 255, 100);
+			lineRGBA(screen, closeRightSDL.x, closeRightSDL.y, closeLeftSDL.x, closeLeftSDL.y, 255, 0, 255, 100);
 			
 			
 			//Draw robot, heading and laser device position
 			TPoint pointerTipPoint;
 			pointerTipPoint.x = 0;
-			pointerTipPoint.y = 0.15;
+			pointerTipPoint.y = 0.2;
 			pointerTipPoint = robotToWorldPoint(pointerTipPoint, pose);
 			TPoint pointerSDL = SDLPoint(pointerTipPoint);
 			filledCircleRGBA(screen, robotSDL.x, robotSDL.y, (int)10, 0, 255, 0, 255);
