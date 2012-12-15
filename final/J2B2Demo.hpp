@@ -112,6 +112,7 @@ private:
   MaCI::Common::TTimestamp iLastOdometryTimestamp;
   MaCI::Ranging::TDeviceInformationPosition iLaserPosition;
   bool iFirstSLAMAttempt;
+  bool iGripperOpen;
   ISGridPose2D iRobotPose;
   ISGridPose2D iPreviousRobotPose;
   ISGridPose2D iOdometryPose;

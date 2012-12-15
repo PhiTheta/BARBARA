@@ -40,6 +40,9 @@ bool skip_window=false;
 #define WEIGHT_SMOOTH	0.12
 #define A_TOLERANCE 	0.00001
 #define CAM_LIDAR_DIST	0.09
+#define GRIPPER_OPEN_ANGLE	0
+#define GRIPPER_CLOSED_ANGLE (M_PI/3-M_PI/20)
+#define CAMERA_TILT_ANGLE	(-M_PI/10)
 
 int iPreviousDirection = 0;
 
@@ -78,6 +81,7 @@ CJ2B2Demo::CJ2B2Demo(CJ2B2Client &aInterface)
     iLastOdometryTimestamp(),
     iLaserPosition(),
     iFirstSLAMAttempt(true),
+    iGripperOpen(true),
     iRobotPose(),
     iPreviousRobotPose(),
     iOdometryPose(),
@@ -391,6 +395,18 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
             CThread::RunThread(KThreadMotionDemo);
           }
           break;
+        
+        //Control gripper 
+        case SDLK_g:
+		 if (!iMotionThreadActive) {
+			 bool worked = false;
+			 while(!worked) {
+				 worked = iInterface.iServoCtrl->SetPosition(iGripperOpen ? GRIPPER_CLOSED_ANGLE : GRIPPER_OPEN_ANGLE, KServoUserServo_0);
+			 }
+			 ownSleep_ms(200);
+			 iGripperOpen = !iGripperOpen;
+		 }
+		 break;
 
           // Control PTU demo.
         case SDLK_p:
@@ -690,7 +706,7 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 				float waypoint_y = center_y+(iNextWaypoint.y-iBasePoint.y)*m;
 				lineRGBA(screen, robot_x, robot_y, waypoint_x, waypoint_y, 0, 0, 0, 255);
 				sprintf(mystr, "Going to: %f, %f", iNextWaypoint.x,iNextWaypoint.y);
-				stringRGBA(screen, screen->w-450, 610,  mystr, 0, 255, 0, 150);
+				stringRGBA(screen, screen->w-450, 620,  mystr, 0, 255, 0, 150);
 			}
 			
 			
@@ -706,18 +722,25 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 				"State: Self destruct"
 			};
 			
+			const char gripperStr[2][60] = {
+				"Gripper: Closed",
+				"Gripper: Open"
+			};
+			
 			//Draw odometry
 			sprintf(mystr, "Odometry: %f, %f, %f", pose->y, pose->x, pose->a);
 			stringRGBA(screen, screen->w-450, 590,  mystr, 0, 255, 0, 150);
 			stringRGBA(screen, screen->w-450, 600,  stateStr[iRobotState], 0, 255, 0, 150);
+			stringRGBA(screen, screen->w-450, 610,  gripperStr[iGripperOpen], 0, 255, 0, 150);
 		}
 	}
     
     // Print help
-#define HELPSTRCOUNT 7
+#define HELPSTRCOUNT 8
     const char helpstr[HELPSTRCOUNT][60] = { 
       "m - Toggle MotionDemo",
       "p - Toggle PTU demo",
+      "g - Toggle Gripper",
       "e - Enable Emergency actions",
       "r - Disable Emergency actions",
       "1,0 - Set all IO outputs on ESC to HIGH/LOW",
@@ -961,13 +984,14 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
    
     bool tilted = false;
     while (!tilted) {
-		tilted = iInterface.iServoCtrl->SetPosition(-M_PI/10, KServoCameraPTUTilt);
+		tilted = iInterface.iServoCtrl->SetPosition(CAMERA_TILT_ANGLE, KServoCameraPTUTilt);
 	}
 	ownSleep_ms(20);
 	tilted = false;
-	while (!tilted) {
-		tilted = iInterface.iServoCtrl->SetPosition(0, KServoUserServo_0);
+	while (!tilted && !iGripperOpen) {
+		tilted = iInterface.iServoCtrl->SetPosition(GRIPPER_OPEN_ANGLE, KServoUserServo_0);
 	}
+	iGripperOpen = true;
 	ownSleep_ms(1000);
 	dPrint(1, "Camera tilted");
 	
@@ -992,7 +1016,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 				float distance = iSmallestDistanceToObject.distance;
 				float angle = iSmallestDistanceToObject.angle;
 				
-				float proximityAlertLimit = 0.4;
+				float proximityAlertLimit = 0.7;
 				//Allow it to come closer on sides
 				if (angle < proximityAngleLimit && angle > -proximityAngleLimit) {
 					proximityAlertLimit = 0.3;
@@ -1027,20 +1051,28 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 					}
 					else if (iRobotState == RobotStateOpenGripper) {
 						dPrint(1, "Openning gripper");
-						bool open = iInterface.iServoCtrl->SetPosition(0, KServoUserServo_0);
-				        ownSleep_ms(200);	
+						bool open = true;
+						if (!iGripperOpen) {
+							open = iInterface.iServoCtrl->SetPosition(GRIPPER_OPEN_ANGLE, KServoUserServo_0);
+							ownSleep_ms(200);
+						}
 				        if (open) {
 							iRobotState = RobotStateMoveAway;
+							iGripperOpen = true;
 							continue;
 						}
 					}	
 					else if (iRobotState == RobotStateCloseGripper) {
 						dPrint(1, "Closing grippper");
-						bool closed = iInterface.iServoCtrl->SetPosition(M_PI/3-M_PI/20, KServoUserServo_0);
-				        ownSleep_ms(200);	
+						bool closed = true;
+						if (iGripperOpen) {
+							closed = iInterface.iServoCtrl->SetPosition(GRIPPER_CLOSED_ANGLE, KServoUserServo_0);
+							ownSleep_ms(200);	
+						}
 				        if (closed) {
 							iNextWaypoint = iBasePoint;
 							iRobotState = RobotStateGoHome;
+							iGripperOpen = false;
 							continue;
 						}
 					}
