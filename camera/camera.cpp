@@ -239,7 +239,7 @@ Camera_Obstacle_Alarm Find_Object(unsigned char *image, int width, int height, i
             //Get pixel
 		filter_pixel32( image, width, height, x, y, local_color_flag );
 		if(local_color_flag ==1){
-			if(count_pixels_red >= 5){
+			if(count_pixels_red >= 0) {//5){
 				alarm_1.Red_Target_Flag = true;
 			}
 		}

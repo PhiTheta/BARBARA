@@ -139,6 +139,7 @@ private:
   void mapFromGridMap(vector<ISGridPoint> map, int **output);
   TPoint mapMatrixRepresentation(vector<TPoint> map, int **output);
   void analyzeCamera();
+  TPoint worldPoint(float distance, float angle, float y_peripheral_offset, const MaCI::Position::TPose2D *pose);
 };
 
 #endif

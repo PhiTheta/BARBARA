@@ -99,6 +99,8 @@ ISGridPose2D CJ2B2Demo::gridPoseFromTPose(const MaCI::Position::TPose2D *pose)
 void CJ2B2Demo::analyzeCamera()
 {
 	using namespace MaCI::Image;
+	using namespace MaCI::Position;
+	
 	
 	//dPrintLCRed(1, "ACHTUNG!!!! SIMULATED WAYPOINT!!!");
 	//iNextWaypoint.x = 1.5;
@@ -130,6 +132,18 @@ void CJ2B2Demo::analyzeCamera()
 		container.ConvertTo(KImageDataRGB);
 		dPrint(1, "Converted JPG image to RGB raw");
 		TImageInfo info = container.GetImageInfoRef();
+		
+		if (info.imagedatatype != KImageDataRGB) {
+			dPrintLCRed(1,"Image data is not RGB!!!");
+			return;
+		}
+		else {
+			//int size = (int)container.GetImageDataSize();
+			//dPrintLCYellow(1, "Image size %d", size);
+			//for (int i = 0; i < 5; i++) {
+				//dPrintLCYellow(1, "%X", (unsigned char)container.GetImageDataPtr()[i]);
+			//}
+		}
       
 		int search_color_flag = 1; //1 - red, 2 - blue
 		Camera_Obstacle_Alarm answer = Find_Object((unsigned char *)container.GetImageDataPtr(), info.imagewidth, info.imageheight, search_color_flag);
@@ -138,12 +152,18 @@ void CJ2B2Demo::analyzeCamera()
 			dPrint(1, "Found something red");
 			Camera_Distance distance = Postion_Object(answer.c_x, answer.c_y, info.imagewidth, info.imageheight);
 			distance.distance = fabs(distance.distance);
+			distance.angle = distance.angle >= 0 ? distance.angle - M_PI_2 : distance.angle + M_PI_2;
 			dPrint(1, "Found a ball (distance %f; angle %f)", distance.distance, distance.angle);
 			
 			//Create a waypoint here
 			//In Universal frame
-			//iNextWaypoint = laserToWorld(distance.distance, distance.angle, iRobotPose, iLaserPosition.x, X_RES, Y_RES);
-			iRobotState = RobotStateGoToStone;
+			int posSeq = -1;
+			CPositionData pd;
+			if (iInterface.iPositionOdometry->GetPositionEvent(pd, &posSeq, 1000)) {
+				const TPose2D *pose = pd.GetPose2D();
+				iNextWaypoint = worldPoint(distance.distance, distance.angle, iLaserPosition.x, pose);
+				iRobotState = RobotStateGoToStone;
+			}
 		}
 		else {
 			dPrint(1, "Did not find anything");
@@ -417,6 +437,28 @@ void CJ2B2Demo::runSLAM()
 	}
 }
 
+TPoint CJ2B2Demo::worldPoint(float distance, float angle, float y_peripheral_offset, const MaCI::Position::TPose2D *pose)
+{
+	TPoint me;
+	me.x = pose->y;
+	me.y = pose->x;
+	
+	TPoint point;
+	
+	//Laser origin coordinates
+	point.x = distance*sin(angle);
+	point.y = distance*cos(angle);
+	
+	//Robot origin coordinates
+	point.y += y_peripheral_offset;
+	
+	//World coordinates
+	TPoint res;
+	res.x = point.x*cos(pose->a)+point.y*sin(pose->a)+me.x;
+	res.y = -point.x*sin(pose->a)+point.y*cos(pose->a)+me.y;
+	return res;
+}
+
 void CJ2B2Demo::updateMap(const MaCI::Position::TPose2D *pose, bool eraseUntrustedPoints)
 {
 	TPoint me;
@@ -428,24 +470,12 @@ void CJ2B2Demo::updateMap(const MaCI::Position::TPose2D *pose, bool eraseUntrust
 	lidarPoint.y = iLaserPosition.x*cos(pose->a)+me.y;
 	
 	for(EACH_IN_i(iLastLaserDistanceArray)) {
-		TPoint point;
-		
-		//Laser origin coordinates
-		point.x = i->distance*sin(i->angle);
-		point.y = i->distance*cos(i->angle);
-		
-		//Robot origin coordinates
-		point.y += iLaserPosition.x;
-		
-		//World coordinates
-		TPoint worldPoint;
-		worldPoint.x = point.x*cos(pose->a)+point.y*sin(pose->a)+me.x;
-		worldPoint.y = -point.x*sin(pose->a)+point.y*cos(pose->a)+me.y;
+		TPoint obstaclePoint = worldPoint(i->distance, i->angle, iLaserPosition.x, pose);
 		
 		bool exists = false;
 		for (vector<TPoint>::iterator iterator = iMap.begin(); iterator < iMap.end(); iterator++) {
 			TPoint mapPoint = *iterator;
-			if (fabs(worldPoint.x-mapPoint.x) < 0.01 && fabs(worldPoint.y-mapPoint.y) < 0.01) {
+			if (fabs(obstaclePoint.x-mapPoint.x) < 0.01 && fabs(obstaclePoint.y-mapPoint.y) < 0.01) {
 				exists = true;
 				break;
 			}
@@ -453,20 +483,20 @@ void CJ2B2Demo::updateMap(const MaCI::Position::TPose2D *pose, bool eraseUntrust
 		
 		if (!exists) {
 			Lock();
-			iMap.push_back(worldPoint);
+			iMap.push_back(obstaclePoint);
 			
 			if (eraseUntrustedPoints) {
 				//If obstacle lies on the laser point, eliminate it
 				for (vector<TPoint>::iterator iterator = iMap.begin(); iterator < iMap.end(); iterator++) {
 					TPoint mapPoint = *iterator;
-					if (fabs(worldPoint.x-lidarPoint.x) > 0.0001) {
-						float b = (worldPoint.x*lidarPoint.y-lidarPoint.x*worldPoint.y)/(worldPoint.x-lidarPoint.x);
+					if (fabs(obstaclePoint.x-lidarPoint.x) > 0.0001) {
+						float b = (obstaclePoint.x*lidarPoint.y-lidarPoint.x*obstaclePoint.y)/(obstaclePoint.x-lidarPoint.x);
 						float k = (lidarPoint.y-b)/lidarPoint.x;
 						if ((k*mapPoint.x+b)-mapPoint.y < 0.0001 &&
-						   ((mapPoint.x-lidarPoint.x > 0.001 && mapPoint.x-worldPoint.x < -0.001) || 
-						    (mapPoint.x-lidarPoint.x < -0.001 && mapPoint.x-worldPoint.x > 0.001)) &&
-						   ((mapPoint.y-lidarPoint.y > 0.001 && mapPoint.y-worldPoint.y < -0.001) ||
-						    (mapPoint.y-lidarPoint.y < -0.001 && mapPoint.y-worldPoint.y > 0.001))
+						   ((mapPoint.x-lidarPoint.x > 0.001 && mapPoint.x-obstaclePoint.x < -0.001) || 
+						    (mapPoint.x-lidarPoint.x < -0.001 && mapPoint.x-obstaclePoint.x > 0.001)) &&
+						   ((mapPoint.y-lidarPoint.y > 0.001 && mapPoint.y-obstaclePoint.y < -0.001) ||
+						    (mapPoint.y-lidarPoint.y < -0.001 && mapPoint.y-obstaclePoint.y > 0.001))
 						 ) {
 							iMap.erase(iterator);
 						}
@@ -484,9 +514,9 @@ void CJ2B2Demo::updateMap(ISGridPose2D pose, vector<ISGridPoint> scans)
 {
 	for (vector<ISGridPoint>::iterator iterator = scans.begin(); iterator < scans.end(); iterator++) {
 		ISGridPoint point = *iterator;
-		ISGridPoint worldPoint = robotToWorld(pose, point);
-		if (!setContainsPoint(iGridMap, worldPoint)) {
-			iGridMap.push_back(worldPoint);
+		ISGridPoint obstaclePoint = robotToWorld(pose, point);
+		if (!setContainsPoint(iGridMap, obstaclePoint)) {
+			iGridMap.push_back(obstaclePoint);
 		}
 	}
 }
