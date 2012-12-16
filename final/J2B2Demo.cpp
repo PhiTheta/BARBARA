@@ -14,6 +14,7 @@
 #include <ostream>
 #include <sys/stat.h>
 
+
 using namespace std;
 bool skip_window=false;
 
@@ -59,7 +60,7 @@ inline float truncate(float val)
 }
 	
 
-	
+	int jx, jy, jr;
 
 //*****************************************************************************
 
@@ -731,6 +732,9 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 			filledCircleRGBA(screen, lidarSDL.x, lidarSDL.y, (int)2, 255, 255, 0, 255);
 			circleRGBA(screen, robotSDL.x, robotSDL.y, (int)10, 0, 0, 0, 255);
 			
+			// draw detected circle 
+			
+			circleRGBA(screen, 450 + jx, jy, jr, 255, 255, 255, 255);
 			//Draw obstacles
 			//Lock();
 			for (vector<TPoint>::iterator iterator = iMap.begin(); iterator < iMap.end(); iterator++) {
@@ -1552,7 +1556,31 @@ void CJ2B2Demo::analyzeCamera()
 				//dPrintLCYellow(1, "%X", (unsigned char)container.GetImageDataPtr()[i]);
 			//}
 		}
-      
+		
+		// aplication with the camera code on Open CV
+       World_frame frame;
+       frame = Find_Object_file(mystr);
+       if (frame.Alarm) {
+		   dPrint(1, "Found a ball (c_x %f; c_y %f)", frame.x_rob_frame, frame.y_rob_frame);
+		   float angle= 0, distance=0;
+		   angle = atan2f(frame.x_rob_frame,frame.y_rob_frame);
+		   distance = fabs(sqrtf(pow(frame.x_rob_frame,2)+pow(frame.y_rob_frame,2)));
+		   dPrint(1, "Found a ball (distance %f; angle %f)", distance, angle);
+		   jx = frame.centerX;
+		   jy = frame.centerY; 
+		   jr = frame.radius;
+		   //In Universal frame
+				CPositionData pd;
+				
+				if (iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, iLastLaserTimestamp.GetGimTime())) {
+					const TPose2D *pose1 = pd.GetPose2D();
+					iNextWaypoint = worldPoint(distance, angle, iLidarPoint.y+CAM_LIDAR_DIST, pose1);
+					dPrintLCYellow(1, "Going to a ball");
+					iRobotState = RobotStateGoToStone;
+		}else {
+			dPrint(1, "Did not find anything");
+		}
+		}
       /*
 		int search_color_flag = 1; //1 - red, 2 - blue
 		Camera_Obstacle_Alarm answer = Find_Object((unsigned char *)container.GetImageDataPtr(), info.imagewidth, info.imageheight, search_color_flag);

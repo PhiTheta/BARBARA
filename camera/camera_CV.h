@@ -12,8 +12,8 @@ struct Camera_Target_Alarm{
 
 	bool Red_Obstacle_Flag;
 	bool Blue_Target_Flag;
-	int c_x;
-	int c_y;
+	float c_x;
+	float c_y;
 
 };
 
@@ -22,7 +22,10 @@ struct World_frame{
 float x_rob_frame;
 float y_rob_frame;
 bool Alarm;
+int centerX;
+int centerY;
+int radius;
 };
 
-World_frame Find_Object( void* buff, int width);
+World_frame array_Object( void* buff, int width);
 World_frame Find_Object_file( const char* filename);
