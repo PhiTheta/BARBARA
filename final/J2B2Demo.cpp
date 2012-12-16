@@ -45,6 +45,7 @@ bool skip_window=false;
 #define CAMERA_TILT_ANGLE	(-M_PI/10)
 #define CORRIDOR_RADIUS	0.3
 #define CORRIDOR_DEPTH	0.85
+#define GRID_WALL_DEPTH	4
 
 inline float truncate(float val)
 {
@@ -1593,8 +1594,8 @@ void CJ2B2Demo::analyzeCamera()
 
 void CJ2B2Demo::updateMapGrid()
 {
-	for (int i = 2; i < MAP_ROWS-2; i++) {
-		for (int j = 2; j < MAP_COLS-2; j++) {
+	for (int i = GRID_WALL_DEPTH; i < MAP_ROWS-GRID_WALL_DEPTH; i++) {
+		for (int j = GRID_WALL_DEPTH; j < MAP_COLS-GRID_WALL_DEPTH; j++) {
 			int idx = i*MAP_COLS+j;
 			bool set = false;
 			for (EACH_IN_k(iMap)) {
@@ -1603,8 +1604,8 @@ void CJ2B2Demo::updateMapGrid()
 				if (obstacle.x == j && obstacle.y == i) {
 					set = true;
 					//Set the cell and 16 adjacent cells around it as obstacles					
-					for (int ii = i-2; ii <= i+2; ii++) {
-						for (int jj = j-2; jj < j+2; jj++) {
+					for (int ii = i-GRID_WALL_DEPTH; ii <= i+GRID_WALL_DEPTH; ii++) {
+						for (int jj = j-GRID_WALL_DEPTH; jj < j+GRID_WALL_DEPTH; jj++) {
 							int idxx = ii*MAP_COLS+jj;
 							iMapGrid[idxx] = 0;
 						}
