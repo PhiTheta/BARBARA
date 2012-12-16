@@ -1553,6 +1553,7 @@ void CJ2B2Demo::analyzeCamera()
 			//}
 		}
       
+      /*
 		int search_color_flag = 1; //1 - red, 2 - blue
 		Camera_Obstacle_Alarm answer = Find_Object((unsigned char *)container.GetImageDataPtr(), info.imagewidth, info.imageheight, search_color_flag);
 		
@@ -1575,6 +1576,7 @@ void CJ2B2Demo::analyzeCamera()
 		else {
 			dPrint(1, "Did not find anything");
 		}
+		* */
 	}
 	else {
 		//dPrint(1, "Image not available");

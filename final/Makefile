@@ -15,7 +15,7 @@ CPPFLAGS=-O0 -g3 $(WFLAGSCPP) $(INCLUDES) $(EXTRADEFS) `xml2-config --cflags`
 DCPPFLAGS=-O0 -g3 $(WFLAGSDCPP) $(INCLUDES) $(EXTRADEFS)
 
 LD=g++
-LIBS=-lrt -lpthread -lssl -ljpeg -lpng -lSDL_gfx -lSDL_image -larmadillo \
+LIBS=-lrt -lpthread -lssl -ljpeg -lpng -lSDL_gfx -lSDL_image -larmadillo -lcv -lcvaux \
 		 -lSerialLinkClient -lGIMI -lGIMutils -lMaCI -lFSR2011OrderSystem \
 			`xml2-config --libs` `sdl-config  --libs`
 
@@ -38,7 +38,7 @@ all:	$(TARGETS)
 ###############################################
 ###############################################
 # J2B2-UI-example target, and dependencies
-J2B2-UI-EXAMPLE_OBJECTS=J2B2-UI-example.opp J2B2Demo.opp astar/node.opp astar/pathplan2.opp odoEKF/odoEKF.opp ../simpleSLAM/slam.opp ../camera/camera.opp
+J2B2-UI-EXAMPLE_OBJECTS=J2B2-UI-example.opp J2B2Demo.opp astar/node.opp astar/pathplan2.opp odoEKF/odoEKF.opp ../simpleSLAM/slam.opp ../camera/camera_CV.opp
 J2B2-UI-example: GIMlibs $(J2B2-UI-EXAMPLE_OBJECTS)
 	@$(LINK) -o $@ $(J2B2-UI-EXAMPLE_OBJECTS) $(LIBS) -lSDL -lSDL_gfx -lSDL_image
 	@echo "      [LD] $@"

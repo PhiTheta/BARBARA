@@ -11,7 +11,7 @@
 #include "J2B2-API.hpp"
 #include "../simpleSLAM/slam.h"
 #include "astar/pathplan2.h"
-#include "../camera/camera.h"
+#include "../camera/camera_CV.h"
 
 #define MAP_WIDTH		4.5*2
 #define MAP_HEIGHT		3.7*2
