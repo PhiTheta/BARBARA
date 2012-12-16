@@ -1017,7 +1017,6 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
   using namespace MaCI::Position;
   using namespace MaCI;
  
-  const float angspeed = M_PI / 4.0;
   int posSeq = -1;
   float K_alpha = 0.05;
   
@@ -1153,7 +1152,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 							TurnDirection direction = iPreviousAvoidanceDirection != DirectionUnknown && iPreviousAvoidanceDirection != DirectionForward ? iPreviousAvoidanceDirection : iSmallestDistanceToObject.angle > 0 ? DirectionRight : DirectionLeft;
 							
 							//Turn by random angle
-							r_wspeed = angspeed;
+							r_wspeed = 0.3;
 							r_wspeed *= direction == DirectionLeft ? 1 : -1;
 							iPreviousAvoidanceDirection = direction;
 							iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
