@@ -799,13 +799,13 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 				SDL_Rect cellRect = {0, 450, rect.w/MAP_COLS, rect.h/MAP_ROWS};
 				for (int i = 0; i < MAP_ROWS; i++) {
 					for (int j = 0; j < MAP_COLS; j++) {
-						if ((MAP_ROWS*i)+j < MAP_ROWS*MAP_COLS) {
+						//if ((MAP_ROWS*i)+j < MAP_ROWS*MAP_COLS) {
 							if (iMapGrid[(MAP_ROWS*i)+j] == 0) {
 								cellRect.x = rectGrid.x+cellRect.w*j;
 								cellRect.y = rectGrid.y+cellRect.h*i;
 								SDL_FillRect(screen, &cellRect, SDL_MapRGB(screen->format, 100, 100, 255));
 							}
-						}
+						//}
 					}
 				}
 				for (EACH_IN_i(iAstarPath)) {
@@ -1570,19 +1570,28 @@ void CJ2B2Demo::analyzeCamera()
 
 void CJ2B2Demo::updateMapGrid()
 {
-	for (int i = 0; i < MAP_ROWS; i++) {
-		for (int j = 0; j < MAP_COLS; j++) {
+	for (int i = 2; i < MAP_ROWS-2; i++) {
+		for (int j = 2; j < MAP_COLS-2; j++) {
 			int idx = i*MAP_COLS+j;
-			iMapGrid[idx] = 1;
+			bool set = false;
 			for (EACH_IN_k(iMap)) {
 				//Biased by half of the map
 				int x = round(k->x/X_RES)+MAP_COLS/2;
 				int y = round(k->y/Y_RES)+MAP_ROWS/2;
 				if (x == j && y == i) {
-					iMapGrid[idx] = 0;
-				//	dPrintLCYellow(1,"Settign cell %d,%d as an obstacle", x,y);
+					set = true;
+					//Set the cell and 16 adjacent cells around it as obstacles
+					for (int ii = i-2; ii <= i+2; ii++) {
+						for (int jj = j-2; jj < j+2; jj++) {
+							int idxx = ii*MAP_COLS+jj;
+							iMapGrid[idxx] = 0;
+						}
+					}
 					break;
 				}
+			}
+			if (!set) {
+				iMapGrid[idx] = 1;
 			}
 		}
 	}
