@@ -116,7 +116,6 @@ private:
   MaCI::Common::TTimestamp iLastOdometryTimestamp;
   bool iFirstSLAMAttempt;
   bool iGripperOpen;
-  vector<ISGridPoint> iGridMap;
   vector<TPoint> iMap;
   vector<MaCI::Position::TPose2D> iSmoothAstarPath;
   vector<node> iAstarPath;
@@ -132,7 +131,8 @@ private:
   TPoint iBasePoint;
   TGridPoint iRobotGridPoint;
   TGridPoint iWaypointGridPoint;
-  TurnDirection iPreviousDirection;
+  TurnDirection iPreviousAvoidanceDirection;
+  TurnDirection iPreviousNavigationDirection;
   MotionState iMotionState;
   InternalState iRobotState;
   InternalState iPreviousRobotState;

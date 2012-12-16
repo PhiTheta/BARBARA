@@ -81,7 +81,6 @@ CJ2B2Demo::CJ2B2Demo(CJ2B2Client &aInterface)
     iLastOdometryTimestamp(),
     iFirstSLAMAttempt(true),
     iGripperOpen(true),
-    iGridMap(),
     iMap(),
 	iSmoothAstarPath(),
 	iAstarPath(),
@@ -97,7 +96,8 @@ CJ2B2Demo::CJ2B2Demo(CJ2B2Client &aInterface)
     iBasePoint(),
     iRobotGridPoint(),
     iWaypointGridPoint(),
-    iPreviousDirection(DirectionForward),
+    iPreviousAvoidanceDirection(DirectionForward),
+    iPreviousNavigationDirection(DirectionUnknown),
     iMotionState(MotionStateIdle),
     iRobotState(RobotStateIdle),
     iPreviousRobotState(RobotStateIdle)
@@ -783,7 +783,7 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 			stringRGBA(screen, 480, 510,  stateStr[iRobotState], 0, 255, 0, 150);
 			stringRGBA(screen, 480, 520,  gripperStr[iGripperOpen], 0, 255, 0, 150);
 			if (iRobotState == RobotStateAvoidObstacle) {
-				stringRGBA(screen, 700, 510,  directionStr[iPreviousDirection], 0, 255, 0, 150);
+				stringRGBA(screen, 700, 510,  directionStr[iPreviousAvoidanceDirection], 0, 255, 0, 150);
 			}
 				
 			
@@ -1074,7 +1074,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 				iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, iLastLaserTimestamp.GetGimTime());
 				const TPose2D *pose = pd.GetPose2D();
 				//iPose = pd.GetPose2D();
-				dPrint(1, "ODO %f %f %f", pose->x, pose->y, pose->a);
+				//dPrint(1, "ODO %f %f %f", pose->x, pose->y, pose->a);
 					
 				
 				r_acc = 0.1;
@@ -1098,12 +1098,12 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 					iInterface.iMotionCtrl->SetStop();
 					ownSleep_ms(20);
 					iPreviousRobotState = iRobotState;
+					dPrintLCYellow(1, "Avoiding obstacle");
 					iRobotState = RobotStateAvoidObstacle;
 					continue;
 				}
 				else {
 					if (iRobotState == RobotStateMoveAway) {
-						dPrint(1, "Moving away from the base");
 						r_acc = 0.1;
 						r_speed = -0.15;
 						r_wspeed = 0;
@@ -1121,20 +1121,19 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 						}
 					}
 					else if (iRobotState == RobotStateOpenGripper) {
-						dPrint(1, "Openning gripper");
 						bool open = true;
 						if (!iGripperOpen) {
 							open = iInterface.iServoCtrl->SetPosition(GRIPPER_OPEN_ANGLE, KServoUserServo_0);
 							ownSleep_ms(200);
 						}
 				        if (open) {
+							dPrintLCYellow(1, "Moving away from the base");
 							iRobotState = RobotStateMoveAway;
 							iGripperOpen = true;
 							continue;
 						}
 					}	
 					else if (iRobotState == RobotStateCloseGripper) {
-						dPrint(1, "Closing grippper");
 						bool closed = true;
 						if (iGripperOpen) {
 							closed = iInterface.iServoCtrl->SetPosition(GRIPPER_CLOSED_ANGLE, KServoUserServo_0);
@@ -1142,6 +1141,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 						}
 				        if (closed) {
 							iNextWaypoint = iBasePoint;
+							dPrintLCYellow(1, "Going home");
 							iRobotState = RobotStateGoHome;
 							iGripperOpen = false;
 							continue;
@@ -1149,26 +1149,35 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 					}
 					else if (iRobotState == RobotStateAvoidObstacle) {
 						if (iObstacleHazard) {
-							TurnDirection direction = iPreviousDirection != DirectionUnknown && iPreviousDirection != DirectionForward ? iPreviousDirection : iSmallestDistanceToObject.angle > 0 ? DirectionRight : DirectionLeft;
+							TurnDirection direction = iPreviousAvoidanceDirection != DirectionUnknown && iPreviousAvoidanceDirection != DirectionForward ? iPreviousAvoidanceDirection : iSmallestDistanceToObject.angle > 0 ? DirectionRight : DirectionLeft;
 							
 							//Turn by random angle
 							r_wspeed = angspeed;
 							r_wspeed *= direction == DirectionLeft ? 1 : -1;
-							dPrint(1,"Obstacle at distance %f angle %f. Ang spd %f", iSmallestDistanceToObject.distance, iSmallestDistanceToObject.angle, r_wspeed);
-							iPreviousDirection = direction;
+							iPreviousAvoidanceDirection = direction;
 							iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
 							ownSleep_ms(20);
 						}
 						else {
 							iInterface.iMotionCtrl->SetStop();
 							ownSleep_ms(20);
+							if (iPreviousRobotState == RobotStateGoHome) dPrintLCYellow(1, "Going home");
+							else if (iPreviousRobotState == RobotStateGoToStone) dPrintLCYellow(1, "Going to a ball");
+							else if (iPreviousRobotState == RobotStateWander) dPrintLCYellow(1, "Wandering");
+							
+							//Rotate another direction when exiting obstacle avoidance, so that it does not enter it again
+							if (iPreviousRobotState == RobotStateGoHome || iPreviousRobotState == RobotStateGoToStone) {
+								iPreviousNavigationDirection = iPreviousAvoidanceDirection;
+							}
+							
+							iPreviousAvoidanceDirection = DirectionUnknown;
+							
 							iRobotState = iPreviousRobotState;
 							continue;
 						}
 					}
 					else if (iRobotState == RobotStateWander) {
 						
-						dPrint(1, "Wandering");
 						if (cnt++ >= 60) {
 							cnt = 0;
 							analyzeCamera();
@@ -1178,19 +1187,16 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 						r_acc = 0.1;
 						r_wspeed = 0.0;
 						r_speed = 0.15;
-						dPrint(1,"No Obstacle. Going forward (%f,%f,%f)", r_speed, r_wspeed, r_acc);
 						
 						//Don't change direction faster than 1s
-						//if (ownTime_get_ms() - lastObstacleOccurance > 1000 && iPreviousDirection != DirectionUnknown) {
-							iPreviousDirection = DirectionForward;
+						//if (ownTime_get_ms() - lastObstacleOccurance > 1000 && iPreviousAvoidanceDirection != DirectionUnknown) {
+							iPreviousAvoidanceDirection = DirectionForward;
 						//}
 						iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
 						ownSleep_ms(20);
 						
 					} else if (iRobotState == RobotStateGoHome || RobotStateGoToStone) {
-						
-						dPrint(1, "Navigating to %f, %f", iNextWaypoint.x,iNextWaypoint.y);
-					
+											
 					     ////Run A*
 						if (!iHasPlan) {
 						
@@ -1274,8 +1280,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 										continue;
 									}
 									
-									dPrint(1,"Going forward");
-									
+									iPreviousNavigationDirection = DirectionForward;
 									r_speed = 0.05;
 									r_wspeed = K_alpha * alpha;
 									
@@ -1300,15 +1305,20 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 								
 								case MotionStateTurning:
 								{
-									
-									dPrint(1,"Turning");
 										    
 								    r_speed = 0;                    
 									r_wspeed = MAGIC_CNST*alpha;
+									
+									if ((iPreviousNavigationDirection == DirectionLeft && r_wspeed < 0) || (iPreviousNavigationDirection == DirectionRight && r_wspeed > 0)) {
+										r_wspeed *= -1;
+									}
+									
 									if (r_wspeed >= 0.0 || r_wspeed == -0.0) {
+										iPreviousNavigationDirection = DirectionLeft;
 										r_wspeed = MAX(MIN(r_wspeed, MAX_WSPEED), MIN_WSPEED);
 									}
 									else {
+										iPreviousNavigationDirection = DirectionRight;
 										r_wspeed = MIN(MAX(r_wspeed, -MAX_WSPEED), -MIN_WSPEED);	
 									}
 									
@@ -1325,7 +1335,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 					            break;                
 					                
 				                case MotionStateIdle:
-									dPrint(1,"Starting motion");
+									iPreviousNavigationDirection = DirectionUnknown;
 									iMotionState = MotionStateTurning;
 								break;
 								}
@@ -1335,9 +1345,11 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 							iHasPlan = false;
 							iMotionState = MotionStateIdle;
 							if (iRobotState == RobotStateGoToStone) {
+								dPrintLCYellow(1, "Closing gripper");
 								iRobotState = RobotStateCloseGripper;
 							}
 							else if (iRobotState == RobotStateGoHome) {
+								dPrintLCYellow(1, "Opening gripper");
 								iRobotState = RobotStateOpenGripper;
 							}
 						}
@@ -1554,6 +1566,7 @@ void CJ2B2Demo::analyzeCamera()
 			if (iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, iLastLaserTimestamp.GetGimTime())) {
 				const TPose2D *pose = pd.GetPose2D();
 				iNextWaypoint = worldPoint(distance.distance, distance.angle, iLidarPoint.y+CAM_LIDAR_DIST, pose);
+				dPrintLCYellow(1, "Going to a ball");
 				iRobotState = RobotStateGoToStone;
 			}
 		}
@@ -1571,6 +1584,7 @@ void CJ2B2Demo::analyzeCamera()
 			dPrintLCRed(1, "ACHTUNG!!!! SIMULATED WAYPOINT!!!");
 			iNextWaypoint.x = 1.14;//iBasePoint.x+sin(pose->a)*1.5;
 			iNextWaypoint.y = -1.17;//iBasePoint.y+cos(pose->a)*0.5;
+			dPrintLCYellow(1, "Going to a ball");
 			iRobotState = RobotStateGoToStone;
 		}
 		return;
