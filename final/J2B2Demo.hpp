@@ -15,8 +15,8 @@
 
 #define MAP_WIDTH		4.5*2
 #define MAP_HEIGHT		3.7*2
-#define MAP_ROWS		((int)(MAP_WIDTH*5))
-#define MAP_COLS		((int)(MAP_HEIGHT*5))
+#define MAP_ROWS		((int)(MAP_WIDTH*10))
+#define MAP_COLS		((int)(MAP_HEIGHT*10))
 #define X_RES			(MAP_WIDTH/MAP_COLS)
 #define Y_RES			(MAP_HEIGHT/MAP_ROWS)
 

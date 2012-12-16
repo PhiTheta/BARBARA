@@ -1588,9 +1588,7 @@ void CJ2B2Demo::updateMapGrid()
 				TGridPoint obstacle = biasedPoint(*k);
 				if (obstacle.x == j && obstacle.y == i) {
 					set = true;
-					//Set the cell and 16 adjacent cells around it as obstacles
-					dPrintLCYellow(1, "Obstacle at %d,%d (%f,%f). Marking from %d,%d to %d,%d", obstacle.x, obstacle.y, k->x, k->y, i-2, j-2, i+2, j+2);
-					
+					//Set the cell and 16 adjacent cells around it as obstacles					
 					for (int ii = i-2; ii <= i+2; ii++) {
 						for (int jj = j-2; jj < j+2; jj++) {
 							int idxx = ii*MAP_COLS+jj;
