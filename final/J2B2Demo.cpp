@@ -93,6 +93,7 @@ CJ2B2Demo::CJ2B2Demo(CJ2B2Client &aInterface)
     iHasPlan(false),
     iObstacleHazard(false),
     iIter(0),
+    iNavigationStep(0),
     iMapGrid(),
     iBasePoint(),
     iPreviousDirection(DirectionForward),
@@ -388,6 +389,7 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
             dPrint(1,"Terminating MotionDemo...");
             iMotionThreadActive = false;
             iRobotState = RobotStateIdle;
+			iObstacleHazard = false;
             iNextWaypoint.x = iNextWaypoint.y = 0;
             CThread::WaitThread(KThreadMotionDemo);
             dPrint(1,"Terminated.");
@@ -661,32 +663,52 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 			}
 			
 			//Draw safe zone
-			TPoint close_left, close_right, far_left, far_right;
-			close_left.x = -CORRIDOR_RADIUS, close_left.y = 0;
-			close_right.x = CORRIDOR_RADIUS, close_right.y = 0;
-			far_left.x = -CORRIDOR_RADIUS, far_left.y = CORRIDOR_DEPTH;
-			far_right.x = CORRIDOR_RADIUS, far_right.y = CORRIDOR_DEPTH;
-			close_left = robotToWorldPoint(close_left, pose);
-			close_right = robotToWorldPoint(close_right, pose);
-			far_left = robotToWorldPoint(far_left, pose);
-			far_right = robotToWorldPoint(far_right, pose);
-			TPoint farLeftSDL = SDLPoint(far_left);
-			TPoint farRightSDL = SDLPoint(far_right);
-			TPoint closeLeftSDL = SDLPoint(close_left);
-			TPoint closeRightSDL = SDLPoint(close_right);
-			 
-			const Sint16 vx[4] = {closeLeftSDL.x, farLeftSDL.x, farRightSDL.x, closeRightSDL.x};
-			const Sint16 vy[4] = {closeLeftSDL.y, farLeftSDL.y, farRightSDL.y, closeRightSDL.y};
-			filledPolygonRGBA(screen, vx, vy, 4, iObstacleHazard ? 255 : 0, iObstacleHazard ? 0 : 255, 0, 100);
+			if (iMotionThreadActive) {
+				TPoint close_left, close_right, far_left, far_right;
+				close_left.x = -CORRIDOR_RADIUS, close_left.y = 0;
+				close_right.x = CORRIDOR_RADIUS, close_right.y = 0;
+				far_left.x = -CORRIDOR_RADIUS, far_left.y = CORRIDOR_DEPTH;
+				far_right.x = CORRIDOR_RADIUS, far_right.y = CORRIDOR_DEPTH;
+				close_left = robotToWorldPoint(close_left, pose);
+				close_right = robotToWorldPoint(close_right, pose);
+				far_left = robotToWorldPoint(far_left, pose);
+				far_right = robotToWorldPoint(far_right, pose);
+				TPoint farLeftSDL = SDLPoint(far_left);
+				TPoint farRightSDL = SDLPoint(far_right);
+				TPoint closeLeftSDL = SDLPoint(close_left);
+				TPoint closeRightSDL = SDLPoint(close_right);
+				const Sint16 vx[4] = {closeLeftSDL.x, farLeftSDL.x, farRightSDL.x, closeRightSDL.x};
+				const Sint16 vy[4] = {closeLeftSDL.y, farLeftSDL.y, farRightSDL.y, closeRightSDL.y};
+				filledPolygonRGBA(screen, vx, vy, 4, iObstacleHazard ? 255 : 0, iObstacleHazard ? 0 : 255, 0, 100);
+			}
 			
 			
 			//Draw a navigation pointer
 			char mystr[255];
 			if (iRobotState == RobotStateGoHome || iRobotState == RobotStateGoToStone || (iRobotState == RobotStateAvoidObstacle && (iPreviousRobotState == RobotStateGoHome || iPreviousRobotState == RobotStateGoToStone))) { 
 				TPoint waypointSDL = SDLPoint(iNextWaypoint);
-				lineRGBA(screen, robotSDL.x, robotSDL.y, waypointSDL.x, waypointSDL.y, 0, 0, 0, 255);
+				lineRGBA(screen, robotSDL.x, robotSDL.y, waypointSDL.x, waypointSDL.y, 100, 100, 0, 100);
 				sprintf(mystr, "Going to: %f, %f", iNextWaypoint.x,iNextWaypoint.y);
-				stringRGBA(screen, screen->w-640, 540,  mystr, 0, 255, 0, 150);
+				stringRGBA(screen, 480, 540,  mystr, 0, 255, 0, 150);
+			}
+			
+			//Draw a star waypoints
+			if (iMotionThreadActive) {
+				if (iSmoothAstarPath.size() > 0) {
+					for (int i = iNavigationStep; i < (int)iSmoothAstarPath.size()-1; i++) {
+						MaCI::Position::TPose2D waypoint1 = iSmoothAstarPath.at(i);
+						MaCI::Position::TPose2D waypoint2 = iSmoothAstarPath.at(i+1);
+						TPoint nodePoint1, nodePoint2;
+						nodePoint1.x = waypoint1.x*X_RES, nodePoint1.y = waypoint1.y*Y_RES;
+						nodePoint2.x = waypoint2.x*X_RES, nodePoint2.y = waypoint2.y*Y_RES;
+						TPoint nodeSDL1 = SDLPoint(nodePoint1);
+						TPoint nodeSDL2 = SDLPoint(nodePoint2);
+						lineRGBA(screen, nodeSDL1.x, nodeSDL1.y, nodeSDL2.x, nodeSDL2.y, 255, 0, 255, 255);
+					}
+				}
+				else {
+					stringRGBA(screen, 480, 560, "No smooth astar path", 255, 255, 0, 150);
+				}
 			}
 			
 			
@@ -721,20 +743,6 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 				filledCircleRGBA(screen, laser.x, laser.y, (int)2, 255, 0, 0, 255);
 			}
 			
-			//Draw a star waypoints
-			if (iSmoothAstarPath.size() > 0) {
-				for (vector<MaCI::Position::TPose2D>::iterator iterator = iSmoothAstarPath.begin(); iterator < iSmoothAstarPath.end(); iterator++) {
-					MaCI::Position::TPose2D waypoint = *iterator;
-					
-			//filledTrigonRGBA(screen, pointerSDL1.x, pointerSDL1.y, pointerSDL2.x, pointerSDL2.y, pointerSDL3.x, pointerSDL3.y, 255, 0, 0, 255);
-					
-					TPoint nodePoint;
-					nodePoint.x = waypoint.x;
-					nodePoint.y = waypoint.y;
-					TPoint nodeSDL = SDLPoint(nodePoint);
-					circleRGBA(screen, nodeSDL.x, nodeSDL.y, (int)3, 255, 0, 255, 255);
-				}
-			}
 			
 			//Draw shortest distance
 			TPoint closestPoint = robotPoint(iSmallestDistanceToObject.distance, iSmallestDistanceToObject.angle, iLidarPoint.y);
@@ -763,9 +771,9 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 			
 			//Draw odometry
 			sprintf(mystr, "Odometry: %f, %f, %f", pose->x, pose->y, pose->a);
-			stringRGBA(screen, screen->w-640, 500,  mystr, 0, 255, 0, 150);
-			stringRGBA(screen, screen->w-640, 510,  stateStr[iRobotState], 0, 255, 0, 150);
-			stringRGBA(screen, screen->w-640, 520,  gripperStr[iGripperOpen], 0, 255, 0, 150);
+			stringRGBA(screen, 480, 500,  mystr, 0, 255, 0, 150);
+			stringRGBA(screen, 480, 510,  stateStr[iRobotState], 0, 255, 0, 150);
+			stringRGBA(screen, 480, 520,  gripperStr[iGripperOpen], 0, 255, 0, 150);
 			
 			
 			
@@ -795,7 +803,7 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 	}
 	
     if (iMotionThreadActive) {
-      stringRGBA(screen, screen->w-640, 560, "Driving autonomously", 255, 0, 0, 150);
+      stringRGBA(screen, 480, 550, "Driving autonomously", 255, 0, 0, 150);
     }
     
     // print status reports
@@ -804,7 +812,7 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
             iSmallestDistanceToObject.distance, 
             iSmallestDistanceToObject.angle);
     
-    stringRGBA(screen, screen->w-640, 530, 
+    stringRGBA(screen, 480, 530, 
                diststr,
                0, 255, 255, 150);
 
@@ -814,14 +822,14 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
       sprintf(bitstr, "IO port state now: %08x", m);
       
       stringRGBA(screen, 
-                 screen->w-640, 550, 
+                 480, 570, 
                  bitstr,
                  0, 255, 255, 150);
     }
     
     if (iPTUDemoActive) {
       stringRGBA(screen, 
-                 screen->w-640, 570, 
+                 480, 580, 
                  "PTUDemo is active!", 
                  0, 255, 0, 150);
     }
@@ -976,7 +984,6 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
   using namespace MaCI;
  
   const float angspeed = M_PI / 4.0;
-  int step = 0;
   int posSeq = -1;
   float K_alpha = 0.05;
   
@@ -1016,6 +1023,8 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 		tilted = iInterface.iServoCtrl->SetPosition(GRIPPER_OPEN_ANGLE, KServoUserServo_0);
 	}
 	iGripperOpen = true;
+	iNavigationStep = 0;
+	iSmoothAstarPath.empty();
 	ownSleep_ms(1000);
 	dPrint(1, "Camera tilted");
 	
@@ -1058,6 +1067,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 							iInterface.iMotionCtrl->SetStop();
 							iRobotState = RobotStateShutdown;
 							iMotionThreadActive = false;
+							iObstacleHazard = false;
 				            iNextWaypoint.x = iNextWaypoint.y = 0;
 							dPrintLCGreen(1, "Mission complete. Good bye!");
 				            CThread::WaitThread(KThreadMotionDemo);
@@ -1182,17 +1192,17 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 							iHasPlan = true;
 							
 							//Start with node 1, because node 0 is current position;
-							step = 1;
+							iNavigationStep = 1;
 						}
 			
-		                if (step < (int)iSmoothAstarPath.size()-1) {
+		                if (iNavigationStep < (int)iSmoothAstarPath.size()-1) {
 							       
-							dPrint(1,"Driving to a intermediate waypoint %d of %d", step, iSmoothAstarPath.size());
-							node present = iAstarPath.at(step);
+							dPrint(1,"Driving to a intermediate waypoint %d of %d", iNavigationStep, iSmoothAstarPath.size());
+							node present = iAstarPath.at(iNavigationStep);
 							Ax_next_stop_meters = present.x * X_RES;
 							Ay_next_stop_meters = present.y * Y_RES;
 							
-							TPose2D next_stop = iSmoothAstarPath.at(step+1);
+							TPose2D next_stop = iSmoothAstarPath.at(iNavigationStep+1);
 							x_next_stop_meters = next_stop.x * X_RES;
 							y_next_stop_meters = next_stop.y * Y_RES;
 							
@@ -1217,7 +1227,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 									
 							double rho = sqrt(dx*dx + dy*dy);
 							if (rho <= DIST_MARGIN) {
-	                            step++; 
+	                            iNavigationStep++; 
 	                            continue;
 							}
 							

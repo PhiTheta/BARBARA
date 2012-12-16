@@ -122,6 +122,7 @@ private:
   volatile bool iHasPlan;
   volatile bool iObstacleHazard;
   int iIter;
+  int iNavigationStep;
   int iMapGrid[MAP_COLS*MAP_ROWS];
   TPoint iBasePoint;
   TurnDirection iPreviousDirection;
