@@ -145,6 +145,7 @@ private:
   TPoint robotPoint(float distance, float angle, float y_peripheral_offset);
   TPoint robotToWorldPoint(TPoint point, const MaCI::Position::TPose2D *pose);
   TPoint SDLPoint(TPoint point);
+  TGridPoint biasedPoint(TPoint point);
 };
 
 #endif

@@ -796,12 +796,12 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 			
 			if (iAstarPath.size() > 0) {//iRobotState == RobotStateGoHome || iRobotState == RobotStateGoToStone || (iRobotState == RobotStateAvoidObstacle && (iPreviousRobotState == RobotStateGoHome || iPreviousRobotState == RobotStateGoToStone))) {
 				
-				SDL_Rect cellRect = {0, 450, rect.w/MAP_COLS, rect.h/MAP_ROWS};
+				SDL_Rect cellRect = {0, 450, rectGrid.w/MAP_COLS, rectGrid.h/MAP_ROWS};
 				for (int i = 0; i < MAP_ROWS; i++) {
 					for (int j = 0; j < MAP_COLS; j++) {
 						//if ((MAP_ROWS*i)+j < MAP_ROWS*MAP_COLS) {
 							if (iMapGrid[(MAP_ROWS*i)+j] == 0) {
-								cellRect.x = rectGrid.x+cellRect.w*j;
+								cellRect.x = rectGrid.w-cellRect.w*(j+1);
 								cellRect.y = rectGrid.y+cellRect.h*i;
 								SDL_FillRect(screen, &cellRect, SDL_MapRGB(screen->format, 100, 100, 255));
 							}
@@ -809,19 +809,17 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 					}
 				}
 				for (EACH_IN_i(iAstarPath)) {
-					cellRect.x = rectGrid.x+cellRect.w*i->x;
+					cellRect.x = rectGrid.w-cellRect.w*(i->x+1);
 					cellRect.y = rectGrid.y+cellRect.h*i->y;
 					SDL_FillRect(screen, &cellRect, SDL_MapRGB(screen->format, 255, 0, 255));
 				}
-				cellRect.x = rectGrid.x+cellRect.w*iRobotGridPoint.x;
+				cellRect.x = rectGrid.w-cellRect.w*(iRobotGridPoint.x+1);
 				cellRect.y = rectGrid.y+cellRect.h*iRobotGridPoint.y;
 				SDL_FillRect(screen, &cellRect, SDL_MapRGB(screen->format, 0, 255, 0));
-				cellRect.x = rectGrid.x+cellRect.w*iWaypointGridPoint.x;
+				cellRect.x = rectGrid.w-cellRect.w*(iWaypointGridPoint.x+1);
 				cellRect.y = rectGrid.y+cellRect.h*iWaypointGridPoint.y;
 				SDL_FillRect(screen, &cellRect, SDL_MapRGB(screen->format, 255, 255, 0));
 			}
-				
-			
 		}
 	}
 	
@@ -1038,6 +1036,10 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 	
 	iInterface.iBehaviourCtrl->SetStart();
    
+	for (int i = 0; i < MAP_COLS*MAP_ROWS; i++) {
+		iMapGrid[i] = 1;
+	}
+   
     bool tilted = false;
     while (!tilted) {
 		tilted = iInterface.iServoCtrl->SetPosition(CAMERA_TILT_ANGLE, KServoCameraPTUTilt);
@@ -1190,17 +1192,14 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 							
 							//Bias the map because it contains negative values also
 							//But AStar algorithm needs only non-negative values
-							int bias_x = MAP_COLS/2;
-							int bias_y = MAP_ROWS/2;
-							dPrint(1, "Map is biased by %d, %d", bias_x, bias_y);
 							
 							//Current robot position in grid coordinates
-							iRobotGridPoint.x = round(pose->x/X_RES)+bias_x;
-							iRobotGridPoint.y = round(pose->y/Y_RES)+bias_y;
+							TPoint posePoint;
+							posePoint.x = pose->x, posePoint.y = pose->y;
+							iRobotGridPoint = biasedPoint(posePoint);
 							
 							//Waypoint position in grid coordinates
-							iWaypointGridPoint.x = round(iNextWaypoint.x/X_RES)+bias_x;
-							iWaypointGridPoint.y = round(iNextWaypoint.y/Y_RES)+bias_y;
+							iWaypointGridPoint = biasedPoint(iNextWaypoint);
 							
 							dPrint(1, "On the map navigating from %d, %d to %d, %d", iRobotGridPoint.x,iRobotGridPoint.y,iWaypointGridPoint.x,iWaypointGridPoint.y);
 						
@@ -1211,8 +1210,8 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 							
 							//Unbias nodes
 							for (EACH_IN_i(iSmoothAstarPath)) {
-								i->x -= bias_x;
-								i->y -= bias_y;
+								i->x -= MAP_COLS/2;
+								i->y -= MAP_ROWS/2;
 							}
 							
 							iHasPlan = true;
@@ -1576,9 +1575,8 @@ void CJ2B2Demo::updateMapGrid()
 			bool set = false;
 			for (EACH_IN_k(iMap)) {
 				//Biased by half of the map
-				int x = round(k->x/X_RES)+MAP_COLS/2;
-				int y = round(k->y/Y_RES)+MAP_ROWS/2;
-				if (x == j && y == i) {
+				TGridPoint obstacle = biasedPoint(*k);
+				if (obstacle.x == j && obstacle.y == i) {
 					set = true;
 					//Set the cell and 16 adjacent cells around it as obstacles
 					for (int ii = i-2; ii <= i+2; ii++) {
@@ -1832,6 +1830,14 @@ TPoint CJ2B2Demo::SDLPoint(TPoint point)
 	res.y = center.y+(point.y-iBasePoint.y)*50; //that is 1m is 50 px
 	res.x = MIN(450, res.x);
 	res.y = MIN(450, res.y);
+	return res;
+}
+
+TGridPoint CJ2B2Demo::biasedPoint(TPoint point)
+{
+	TGridPoint res;
+	res.x = round(point.x/X_RES)+MAP_COLS/2;
+	res.y = round(point.y/Y_RES)+MAP_ROWS/2;
 	return res;
 }
 
