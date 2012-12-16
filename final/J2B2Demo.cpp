@@ -43,10 +43,8 @@ bool skip_window=false;
 #define GRIPPER_OPEN_ANGLE	0
 #define GRIPPER_CLOSED_ANGLE (M_PI/3-M_PI/20)
 #define CAMERA_TILT_ANGLE	(-M_PI/10)
-#define CORRIDOR_RADIUS	0.25
-#define CORRIDOR_DEPTH	0.4
-
-int iPreviousDirection = 0;
+#define CORRIDOR_RADIUS	0.3
+#define CORRIDOR_DEPTH	0.85
 
 inline float truncate(float val)
 {
@@ -655,12 +653,17 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 			
 			//Draw laser lines
 			vector<TPoint> laserPoints;
+			unsigned int size = iLastLaserDistanceArray.size();
+			Sint16 lvx[size], lvy[size];
 			for(EACH_IN_i(iLastLaserDistanceArray)) {
 				TPoint scanPoint = worldPoint(i->distance, i->angle, iLidarPoint.y, pose);
 				TPoint scanSDL = SDLPoint(scanPoint);
+				int idx = std::distance(iLastLaserDistanceArray.begin(), i);
+				lvx[idx] = scanSDL.x;
+				lvy[idx] = scanSDL.y;
 				laserPoints.push_back(scanSDL);
-				lineRGBA(screen, lidarSDL.x, lidarSDL.y, scanSDL.x, scanSDL.y, 255, 155, 155, 50);
 			}
+			filledPolygonRGBA(screen, lvx, lvy, size, 255, 155, 155, 50);
 			
 			//Draw safe zone
 			if (iMotionThreadActive) {
@@ -769,11 +772,22 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 				"Gripper: Open"
 			};
 			
+			const char directionStr[4][60] = {
+				"Direction: Unknown",
+				"Direction: Forward",
+				"Direction: Left",
+				"Direction: Right"
+			};
+			
 			//Draw odometry
 			sprintf(mystr, "Odometry: %f, %f, %f", pose->x, pose->y, pose->a);
 			stringRGBA(screen, 480, 500,  mystr, 0, 255, 0, 150);
 			stringRGBA(screen, 480, 510,  stateStr[iRobotState], 0, 255, 0, 150);
 			stringRGBA(screen, 480, 520,  gripperStr[iGripperOpen], 0, 255, 0, 150);
+			if (iRobotState == RobotStateAvoidObstacle) {
+				stringRGBA(screen, 700, 510,  directionStr[iPreviousDirection], 0, 255, 0, 150);
+			}
+				
 			
 			
 			
@@ -1028,6 +1042,8 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 	ownSleep_ms(1000);
 	dPrint(1, "Camera tilted");
 	
+	ownTime_ms_t lastObstacleOccurance = 0;
+	
 	float x_next_stop_meters,Ax_next_stop_meters;
 	float y_next_stop_meters,Ay_next_stop_meters;
 
@@ -1048,6 +1064,10 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 				//Check for obstacles;
 				TPoint closestPoint = robotPoint(iSmallestDistanceToObject.distance, iSmallestDistanceToObject.angle, iLidarPoint.y);
 				iObstacleHazard = fabs(closestPoint.x) < CORRIDOR_RADIUS && closestPoint.y < CORRIDOR_DEPTH;				
+				if (iObstacleHazard) {
+					lastObstacleOccurance = ownTime_get_ms();
+				}
+					
 				if (iObstacleHazard && iRobotState != RobotStateAvoidObstacle) {
 					iInterface.iMotionCtrl->SetStop();
 					ownSleep_ms(20);
@@ -1133,7 +1153,11 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 						r_wspeed = 0.0;
 						r_speed = 0.15;
 						dPrint(1,"No Obstacle. Going forward (%f,%f,%f)", r_speed, r_wspeed, r_acc);
-						iPreviousDirection = DirectionForward;
+						
+						//Don't change direction faster than 1s
+						if (ownTime_get_ms() - lastObstacleOccurance > 1000 && iPreviousDirection != DirectionUnknown) {
+							iPreviousDirection = DirectionForward;
+						}
 						iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
 						ownSleep_ms(20);
 						

@@ -34,14 +34,14 @@ int radius_algorithm;
 int center_x, center_y;
 union convert {
 						unsigned char image;
-						Uint8 value;
+						int value;
 };
 
 void filter_pixel32(unsigned char *image, int width, int height, int x, int y, int Flag) 
 {
- unsigned char image_read_1 = image[ ( y) + (x*3) ];
- unsigned char image_read_2 = image[ (y+1) + (x*3) ];
- unsigned char image_read_3 = image[ ( y +2) + (x*3) ];
+ unsigned char image_read_1 = image[ ( y) + (x) ];
+ unsigned char image_read_2 = image[ (y) + (x+1) ];
+ unsigned char image_read_3 = image[ ( y) + (x+2) ];
 
 		 		if (Flag == 1)
 				{
@@ -54,12 +54,15 @@ void filter_pixel32(unsigned char *image, int width, int height, int x, int y, i
 					G1.image = image_read_2;
 					B1.image = image_read_3;
 					
-				red = Rd1.value;
+				//red = Rd1.value;
 
-				green = G1.value;
+				//green = G1.value;
 
-				blue = B1.value;
+				//blue = B1.value;
 				
+				red = image_read_1;
+				green = image_read_2;
+				blue  = image_read_3;
 				
 				// RGB filtering
 				// Red
@@ -144,8 +147,8 @@ float Distance_Calculation(int X_center, int Y_center, int width, int height){
 	z_dis = 0.78;
 	distance_center= tan(M_PI/4)*z_dis;
 	
-	image_height_m = 0.297;
-	image_width_m = 0.210;
+	image_height_m = 1.097;//0.297;
+	image_width_m = 1.010;//0.210;
 	
 	image_center_x = (int)width/2;
 	image_center_y = (int)height/2;
@@ -182,7 +185,7 @@ float Distance_Calculation(int X_center, int Y_center, int width, int height){
 		
 		Xdiff = (((float)image_center_x) - (float)X_center)*pix_to_m_x;
 		
-		distance = (distance_center-((float)image_center_y*pix_to_m_y))+sqrt((pow(Xdiff,2))+(pow(Ydiff,2)));
+		distance = +sqrt((pow(Xdiff,2))+(pow(Ydiff,2))); //(distance_center-((float)image_center_y*pix_to_m_y))
 	}
 	
 
@@ -191,12 +194,19 @@ return distance;
 
 // Calculate the angle to the center of the detected circle 
 
-float Angle_Calculation(int X_center, int Y_center, int width, int height){
+float Angle_Calculation(int X_center, int Y_center, int width, int height, int distance){
 	float Y_diff, X_diff;
 	float angle;
+	float pix_to_m_x, pix_to_m_y;	
+	float image_height_m, image_width_m;
 	
-		
-				Y_diff = (height/2) - Y_center;
+	image_height_m = 1.097;
+	image_width_m = 1.010;
+	
+	pix_to_m_x= image_width_m/width;
+	pix_to_m_y= image_height_m/height;
+			
+				Y_diff = (height) - Y_center;
 			
 				X_diff = (width/2) - X_center;
 			
@@ -223,7 +233,7 @@ Camera_Obstacle_Alarm Find_Object(unsigned char *image, int width, int height, i
             //Get pixel
 		filter_pixel32( image, width, height, x, y, local_color_flag );
 		if(local_color_flag ==1){
-			if(count_pixels_red >= 0) {//5){
+			if(count_pixels >100) {//5){
 				alarm_1.Red_Target_Flag = true;
 			}
 		}
@@ -232,7 +242,7 @@ Camera_Obstacle_Alarm Find_Object(unsigned char *image, int width, int height, i
 			alarm_1.Blue_Target_Flag = true;
 			}
 		}
-            
+            x = x+2;
         }
     }
 
@@ -249,7 +259,7 @@ Camera_Distance Postion_Object(int X_center, int Y_center, int width, int height
 
 		Camera_Distance Distance1; 
 		Distance1.distance = fabs(Distance_Calculation(X_center, Y_center, width, height)); 
-		Distance1.angle = Angle_Calculation(X_center, Y_center, width, height); 
+		Distance1.angle = Angle_Calculation(X_center, Y_center, width, height, Distance1.distance); 
 
 		return Distance1;
 }

@@ -40,10 +40,10 @@ typedef enum {
 } InternalState;
 
 typedef enum {
-	DirectionUnknown = -1,
-	DirectionForward = 0,
-	DirectionLeft = 1,
-	DirectionRight = 2
+	DirectionUnknown = 0,
+	DirectionForward,
+	DirectionLeft,
+	DirectionRight
 } TurnDirection;
 
 struct TPoint {
