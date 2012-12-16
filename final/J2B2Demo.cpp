@@ -819,6 +819,18 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 				cellRect.x = rectGrid.w-cellRect.w*(iWaypointGridPoint.x+1);
 				cellRect.y = rectGrid.y+cellRect.h*iWaypointGridPoint.y;
 				SDL_FillRect(screen, &cellRect, SDL_MapRGB(screen->format, 255, 255, 0));
+				
+				//Check if mouse over
+				int x, y;
+				SDL_GetMouseState(&x, &y);
+				if (x >= rectGrid.x && x <= rectGrid.x+rectGrid.w && y >= rectGrid.y && y <= rectGrid.y+rectGrid.h) {
+					int grid_x = round((x-rectGrid.x)/cellRect.w);
+					int grid_y = round((y-rectGrid.y)/cellRect.h);
+					SDL_Rect captionRect = {x+10, y, 30, 10};
+					SDL_FillRect(screen, &captionRect, SDL_MapRGB(screen->format, 0, 0, 0));
+					sprintf(mystr, "%d,%d", grid_x, grid_y);
+					stringRGBA(screen, x+10, y, mystr, 255, 255, 255, 255);
+				}
 			}
 		}
 	}
@@ -1579,6 +1591,8 @@ void CJ2B2Demo::updateMapGrid()
 				if (obstacle.x == j && obstacle.y == i) {
 					set = true;
 					//Set the cell and 16 adjacent cells around it as obstacles
+					dPrintLCYellow(1, "Obstacle at %d,%d (%f,%f). Marking from %d,%d to %d,%d", obstacle.x, obstacle.y, k->x, k->y, i-2, j-2, i+2, j+2);
+					
 					for (int ii = i-2; ii <= i+2; ii++) {
 						for (int jj = j-2; jj < j+2; jj++) {
 							int idxx = ii*MAP_COLS+jj;
