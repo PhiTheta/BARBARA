@@ -799,13 +799,11 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 				SDL_Rect cellRect = {0, 450, rectGrid.w/MAP_COLS, rectGrid.h/MAP_ROWS};
 				for (int i = 0; i < MAP_ROWS; i++) {
 					for (int j = 0; j < MAP_COLS; j++) {
-						//if ((MAP_ROWS*i)+j < MAP_ROWS*MAP_COLS) {
-							if (iMapGrid[(MAP_ROWS*i)+j] == 0) {
-								cellRect.x = rectGrid.w-cellRect.w*(j+1);
-								cellRect.y = rectGrid.y+cellRect.h*i;
-								SDL_FillRect(screen, &cellRect, SDL_MapRGB(screen->format, 100, 100, 255));
-							}
-						//}
+						if (iMapGrid[i*MAP_COLS+j] == 0) {
+							cellRect.x = rectGrid.w-cellRect.w*(j+1);
+							cellRect.y = rectGrid.y+cellRect.h*i;
+							SDL_FillRect(screen, &cellRect, SDL_MapRGB(screen->format, 100, 100, 255));
+						}
 					}
 				}
 				for (EACH_IN_i(iAstarPath)) {
