@@ -1190,13 +1190,15 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 						
 						//Don't change direction faster than 1s
 						//if (ownTime_get_ms() - lastObstacleOccurance > 1000 && iPreviousAvoidanceDirection != DirectionUnknown) {
-							iPreviousAvoidanceDirection = DirectionForward;
+							iPreviousAvoidanceDirection = DirectionUnknown;
 						//}
 						iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
 						ownSleep_ms(20);
 						
 					} else if (iRobotState == RobotStateGoHome || RobotStateGoToStone) {
-											
+						
+						iPreviousAvoidanceDirection = DirectionUnknown;
+						
 					     ////Run A*
 						if (!iHasPlan) {
 						
