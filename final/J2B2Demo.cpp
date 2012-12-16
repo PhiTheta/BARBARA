@@ -597,6 +597,12 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
     // Clear the screen.
     SDL_FillRect(screen, NULL, 0);
 
+	SDL_Rect rectImg = {450, 0, 640, 481};
+	SDL_Rect frameRectImg = {450, 0, 640, 480};
+	SDL_FillRect(screen , &rectImg , SDL_MapRGB(screen->format , 0,200,0));
+	SDL_FillRect(screen , &frameRectImg , SDL_MapRGB(screen->format , 0,0,0));
+	
+	
     // Now, draw the last received Image.
     if (iLastCameraImage.GetImageDataType() == MaCI::Image::KImageDataJPEG &&
         iLastCameraImage.GetImageDataPtr() != NULL) {
@@ -623,29 +629,18 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 		if (iInterface.iPositionOdometry->CPositionClient::GetPositionEvent(pd, iLastLaserTimestamp.GetGimTime())) {
 			const MaCI::Position::TPose2D *pose = pd.GetPose2D();
 			
-			SDL_Rect rect;
-			rect.x = 0;
-			rect.y = 0 ;
-			rect.w = 450 ;  // Set the width of this rectangle area
-			rect.h = 450 ;  // Set the height of this rectangle area
+			SDL_Rect rect = {0,0,450,450};
+			SDL_Rect frameRect = {0,0,449,449};
+			SDL_FillRect(screen , &rect , SDL_MapRGB(screen->format , 0,200,0));
+			SDL_FillRect(screen , &frameRect , SDL_MapRGB(screen->format , 0,0,0));
 			float center_x = rect.x+rect.w/2;
 			float center_y = rect.y+rect.h/2;
-		
-			SDL_FillRect(screen , &rect , SDL_MapRGB(screen->format , 255 , 255 , 255 ) );
 		  
 			//Draw home rect
-			SDL_Rect homeFrameRect;
-			homeFrameRect.x = center_x+iBasePoint.x-10;
-			homeFrameRect.y = center_y+iBasePoint.y-10;
-			homeFrameRect.w = 20; 
-			homeFrameRect.h = 20; 
-			SDL_Rect homeRect;
-			homeRect.x = center_x+iBasePoint.x-9;
-			homeRect.y = center_y+iBasePoint.y-9;
-			homeRect.w = 18; 
-			homeRect.h = 18; 
-			SDL_FillRect(screen , &homeFrameRect , SDL_MapRGB(screen->format , 0,0,0) );
-			SDL_FillRect(screen , &homeRect , SDL_MapRGB(screen->format , 255,255,255) );
+			SDL_Rect homeFrameRect = {center_x+iBasePoint.x-10, center_y+iBasePoint.y-10, 20, 20};
+			SDL_Rect homeRect = {center_x+iBasePoint.x-9, center_y+iBasePoint.y-9, 18, 18};
+			SDL_FillRect(screen , &homeFrameRect , SDL_MapRGB(screen->format , 255,255,255) );
+			SDL_FillRect(screen , &homeRect , SDL_MapRGB(screen->format , 0,0,0) );
 			
 			TPoint posePoint;
 			posePoint.x = pose->x;
@@ -693,7 +688,7 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 			char mystr[255];
 			if (iRobotState == RobotStateGoHome || iRobotState == RobotStateGoToStone || (iRobotState == RobotStateAvoidObstacle && (iPreviousRobotState == RobotStateGoHome || iPreviousRobotState == RobotStateGoToStone))) { 
 				TPoint waypointSDL = SDLPoint(iNextWaypoint);
-				lineRGBA(screen, robotSDL.x, robotSDL.y, waypointSDL.x, waypointSDL.y, 100, 100, 0, 100);
+				lineRGBA(screen, robotSDL.x, robotSDL.y, waypointSDL.x, waypointSDL.y, 255, 255, 0, 255);
 				sprintf(mystr, "Going to: %f, %f", iNextWaypoint.x,iNextWaypoint.y);
 				stringRGBA(screen, 480, 540,  mystr, 0, 255, 0, 150);
 			}
@@ -739,7 +734,7 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 			//Lock();
 			for (vector<TPoint>::iterator iterator = iMap.begin(); iterator < iMap.end(); iterator++) {
 				TPoint pointSDL = SDLPoint(*iterator);
-				filledCircleRGBA(screen, pointSDL.x, pointSDL.y, (int)1, 0, 0, 255, 255);
+				filledCircleRGBA(screen, pointSDL.x, pointSDL.y, (int)1, 100, 100, 255, 255);
 			}
 			//Unlock(); 
 			
@@ -754,8 +749,8 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 			TPoint closestPoint = robotPoint(iSmallestDistanceToObject.distance, iSmallestDistanceToObject.angle, iLidarPoint.y);
 			closestPoint = robotToWorldPoint(closestPoint, pose);
 			TPoint closestSDL = SDLPoint(closestPoint);
-			lineRGBA(screen, lidarSDL.x, lidarSDL.y, closestSDL.x, closestSDL.y, 0, 0, 255, 255);
-			circleRGBA(screen, closestSDL.x, closestSDL.y, (int)3, 0, 0, 255, 255);
+			lineRGBA(screen, lidarSDL.x, lidarSDL.y, closestSDL.x, closestSDL.y, 100, 100, 255, 255);
+			circleRGBA(screen, closestSDL.x, closestSDL.y, (int)3, 100, 100, 255, 255);
 			
 			
 			const char stateStr[9][60] = {
@@ -793,40 +788,37 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 				
 			
 			
-			
 			//Draw grid
+			SDL_Rect rectGrid = {0, 450, 450, 370};
+			SDL_Rect frameRectGrid = {0, 450, 449, 369};
+			SDL_FillRect(screen , &rectGrid , SDL_MapRGB(screen->format , 0,200,0));
+			SDL_FillRect(screen , &frameRectGrid , SDL_MapRGB(screen->format , 0,0,0));
+			
 			if (iAstarPath.size() > 0) {//iRobotState == RobotStateGoHome || iRobotState == RobotStateGoToStone || (iRobotState == RobotStateAvoidObstacle && (iPreviousRobotState == RobotStateGoHome || iPreviousRobotState == RobotStateGoToStone))) {
-				rect.x = 0;
-				rect.y = 450;
-				rect.w = 450;  // Set the width of this rectangle area
-				rect.h = 370;  // Set the height of this rectangle area
-				SDL_FillRect(screen , &rect , SDL_MapRGB(screen->format , 255 , 255 , 100 ) );
 				
-				SDL_Rect cellRect;
-				cellRect.w = rect.w/MAP_COLS; 
-				cellRect.h = rect.h/MAP_ROWS;
+				SDL_Rect cellRect = {0, 450, rect.w/MAP_COLS, rect.h/MAP_ROWS};
 				for (int i = 0; i < MAP_ROWS; i++) {
 					for (int j = 0; j < MAP_COLS; j++) {
 						if ((MAP_ROWS*i)+j < MAP_ROWS*MAP_COLS) {
 							if (iMapGrid[(MAP_ROWS*i)+j] == 0) {
-								cellRect.x = rect.x+cellRect.w*j;
-								cellRect.y = rect.y+cellRect.h*i;
-								SDL_FillRect(screen, &cellRect, SDL_MapRGB(screen->format, 0, 0, 0));
+								cellRect.x = rectGrid.x+cellRect.w*j;
+								cellRect.y = rectGrid.y+cellRect.h*i;
+								SDL_FillRect(screen, &cellRect, SDL_MapRGB(screen->format, 100, 100, 255));
 							}
 						}
 					}
 				}
 				for (EACH_IN_i(iAstarPath)) {
-					cellRect.x = rect.x+cellRect.w*i->x;
-					cellRect.y = rect.y+cellRect.h*i->y;
-					SDL_FillRect(screen, &cellRect, SDL_MapRGB(screen->format, 255, 0, 0));
+					cellRect.x = rectGrid.x+cellRect.w*i->x;
+					cellRect.y = rectGrid.y+cellRect.h*i->y;
+					SDL_FillRect(screen, &cellRect, SDL_MapRGB(screen->format, 255, 0, 255));
 				}
-				cellRect.x = rect.x+cellRect.w*iRobotGridPoint.x;
-				cellRect.y = rect.y+cellRect.h*iRobotGridPoint.y;
+				cellRect.x = rectGrid.x+cellRect.w*iRobotGridPoint.x;
+				cellRect.y = rectGrid.y+cellRect.h*iRobotGridPoint.y;
 				SDL_FillRect(screen, &cellRect, SDL_MapRGB(screen->format, 0, 255, 0));
-				cellRect.x = rect.x+cellRect.w*iWaypointGridPoint.x;
-				cellRect.y = rect.y+cellRect.h*iWaypointGridPoint.y;
-				SDL_FillRect(screen, &cellRect, SDL_MapRGB(screen->format, 255, 0, 255));
+				cellRect.x = rectGrid.x+cellRect.w*iWaypointGridPoint.x;
+				cellRect.y = rectGrid.y+cellRect.h*iWaypointGridPoint.y;
+				SDL_FillRect(screen, &cellRect, SDL_MapRGB(screen->format, 255, 255, 0));
 			}
 				
 			
