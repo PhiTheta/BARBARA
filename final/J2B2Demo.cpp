@@ -85,6 +85,7 @@ CJ2B2Demo::CJ2B2Demo(CJ2B2Client &aInterface)
     iMap(),
 	iSmoothAstarPath(),
 	iAstarPath(),
+	iLaserScans(),
     iNextWaypoint(),
     iLidarPoint(),
     iPauseOn(true),
@@ -822,9 +823,11 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
     
     // print status reports
     char diststr[255];
-    sprintf(diststr, "Smallest distance to object: %.2fm at %.3f rad", 
+    TPoint closestPoint = robotPoint(iSmallestDistanceToObject.distance, iSmallestDistanceToObject.angle, iLidarPoint.y);
+    sprintf(diststr, "Closest point: %.2fm at %.3f rad (%.2fm, %.2fm cartesian)", 
             iSmallestDistanceToObject.distance, 
-            iSmallestDistanceToObject.angle);
+            iSmallestDistanceToObject.angle,
+            closestPoint.x, closestPoint.y);
     
     stringRGBA(screen, 480, 530, 
                diststr,
@@ -1062,8 +1065,14 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 				r_wspeed = 0.0;
 				
 				//Check for obstacles;
-				TPoint closestPoint = robotPoint(iSmallestDistanceToObject.distance, iSmallestDistanceToObject.angle, iLidarPoint.y);
-				iObstacleHazard = fabs(closestPoint.x) < CORRIDOR_RADIUS && closestPoint.y < CORRIDOR_DEPTH;				
+				iObstacleHazard = false;
+				for (EACH_IN_i(iLaserScans)) {
+					if (fabs(i->x) < CORRIDOR_RADIUS && i->y < CORRIDOR_DEPTH) {
+						iObstacleHazard = true;
+						break;
+					}
+				}
+								
 				if (iObstacleHazard) {
 					lastObstacleOccurance = ownTime_get_ms();
 				}
@@ -1155,9 +1164,9 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 						dPrint(1,"No Obstacle. Going forward (%f,%f,%f)", r_speed, r_wspeed, r_acc);
 						
 						//Don't change direction faster than 1s
-						if (ownTime_get_ms() - lastObstacleOccurance > 1000 && iPreviousDirection != DirectionUnknown) {
+						//if (ownTime_get_ms() - lastObstacleOccurance > 1000 && iPreviousDirection != DirectionUnknown) {
 							iPreviousDirection = DirectionForward;
-						}
+						//}
 						iInterface.iMotionCtrl->SetSpeed(r_speed, r_wspeed, r_acc);
 						ownSleep_ms(20);
 						
@@ -1363,7 +1372,6 @@ int CJ2B2Demo::RunSensorsDemo(int aIterations)
 {
   using namespace MaCI;
   using namespace MaCI::Ranging;
-  const float proximityAlertLimit = 0.30;
   int iterations = 0;
 
 
@@ -1433,16 +1441,11 @@ int CJ2B2Demo::RunSensorsDemo(int aIterations)
         // 'for(EACH_IN_i(<array>))' you can easily access all the
         // elements through the 'i' variable.
         iSmallestDistanceToObject.distance = 1000;
+        iLaserScans.clear();
         for(EACH_IN_i(laserDistanceData)) {
           if (i->distance < iSmallestDistanceToObject.distance &&
               i->distance > 0) iSmallestDistanceToObject = *i;
-
-          if (i->distance <= proximityAlertLimit && i->distance >= 0) {
-            // Proximity alert.
-            dPrint(3,"Proximity alert at direction %.3frad CCW from fw direction, %.3f meters free!",
-                   i->angle,
-                   i->distance);
-          }
+          iLaserScans.push_back(robotPoint(i->distance, i->angle, iLidarPoint.y));
         }
       }
     } else {
@@ -1840,8 +1843,8 @@ void CJ2B2Demo::updateMap(const MaCI::Position::TPose2D *pose, bool eraseUntrust
 {
 	TPoint lidarWorldPoint = robotToWorldPoint(iLidarPoint, pose);
 	
-	for(EACH_IN_i(iLastLaserDistanceArray)) {
-		TPoint obstaclePoint = worldPoint(i->distance, i->angle, iLidarPoint.y, pose);
+	for(EACH_IN_i(iLaserScans)) {
+		TPoint obstaclePoint = robotToWorldPoint(*i, pose);
 		
 		bool exists = false;
 		for (vector<TPoint>::iterator iterator = iMap.begin(); iterator < iMap.end(); iterator++) {

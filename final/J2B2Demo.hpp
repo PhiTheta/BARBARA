@@ -116,6 +116,7 @@ private:
   vector<TPoint> iMap;
   vector<MaCI::Position::TPose2D> iSmoothAstarPath;
   vector<node> iAstarPath;
+  vector<TPoint> iLaserScans;
   TPoint iNextWaypoint;
   TPoint iLidarPoint;
   volatile bool iPauseOn;
