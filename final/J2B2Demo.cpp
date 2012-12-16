@@ -95,6 +95,8 @@ CJ2B2Demo::CJ2B2Demo(CJ2B2Client &aInterface)
     iNavigationStep(0),
     iMapGrid(),
     iBasePoint(),
+    iRobotGridPoint(),
+    iWaypointGridPoint(),
     iPreviousDirection(DirectionForward),
     iMotionState(MotionStateIdle),
     iRobotState(RobotStateIdle),
@@ -387,7 +389,7 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
           if (iMotionThreadActive) {
             dPrint(1,"Terminating MotionDemo...");
             iMotionThreadActive = false;
-            iRobotState = RobotStateIdle;
+            iPreviousRobotState = iRobotState = RobotStateIdle;
 			iObstacleHazard = false;
             iNextWaypoint.x = iNextWaypoint.y = 0;
             CThread::WaitThread(KThreadMotionDemo);
@@ -793,26 +795,40 @@ int CJ2B2Demo::RunSDLDemo(int aIterations)
 			
 			
 			//Draw grid
-			rect.x = 0;
-			rect.y = 450;
-			rect.w = 450;  // Set the width of this rectangle area
-			rect.h = 450;  // Set the height of this rectangle area
-			SDL_FillRect(screen , &rect , SDL_MapRGB(screen->format , 255 , 255 , 100 ) );
-			
-			SDL_Rect cellRect;
-			cellRect.w = rect.w/MAP_COLS; 
-			cellRect.h = rect.h/MAP_ROWS;
-			for (int i = 0; i < MAP_ROWS; i++) {
-				for (int j = 0; j < MAP_COLS; j++) {
-					if ((MAP_ROWS*i)+j < MAP_ROWS*MAP_COLS) {
-						if (iMapGrid[(MAP_ROWS*i)+j] == 0) {
-							cellRect.x = rect.x+cellRect.w*j;
-							cellRect.y = rect.y+cellRect.h*i;
-							SDL_FillRect(screen, &cellRect, SDL_MapRGB(screen->format, 0, 0, 0));
+			if (iAstarPath.size() > 0) {//iRobotState == RobotStateGoHome || iRobotState == RobotStateGoToStone || (iRobotState == RobotStateAvoidObstacle && (iPreviousRobotState == RobotStateGoHome || iPreviousRobotState == RobotStateGoToStone))) {
+				rect.x = 0;
+				rect.y = 450;
+				rect.w = 450;  // Set the width of this rectangle area
+				rect.h = 370;  // Set the height of this rectangle area
+				SDL_FillRect(screen , &rect , SDL_MapRGB(screen->format , 255 , 255 , 100 ) );
+				
+				SDL_Rect cellRect;
+				cellRect.w = rect.w/MAP_COLS; 
+				cellRect.h = rect.h/MAP_ROWS;
+				for (int i = 0; i < MAP_ROWS; i++) {
+					for (int j = 0; j < MAP_COLS; j++) {
+						if ((MAP_ROWS*i)+j < MAP_ROWS*MAP_COLS) {
+							if (iMapGrid[(MAP_ROWS*i)+j] == 0) {
+								cellRect.x = rect.x+cellRect.w*j;
+								cellRect.y = rect.y+cellRect.h*i;
+								SDL_FillRect(screen, &cellRect, SDL_MapRGB(screen->format, 0, 0, 0));
+							}
 						}
 					}
 				}
+				for (EACH_IN_i(iAstarPath)) {
+					cellRect.x = rect.x+cellRect.w*i->x;
+					cellRect.y = rect.y+cellRect.h*i->y;
+					SDL_FillRect(screen, &cellRect, SDL_MapRGB(screen->format, 255, 0, 0));
+				}
+				cellRect.x = rect.x+cellRect.w*iRobotGridPoint.x;
+				cellRect.y = rect.y+cellRect.h*iRobotGridPoint.y;
+				SDL_FillRect(screen, &cellRect, SDL_MapRGB(screen->format, 0, 255, 0));
+				cellRect.x = rect.x+cellRect.w*iWaypointGridPoint.x;
+				cellRect.y = rect.y+cellRect.h*iWaypointGridPoint.y;
+				SDL_FillRect(screen, &cellRect, SDL_MapRGB(screen->format, 255, 0, 255));
 			}
+				
 			
 		}
 	}
@@ -1041,14 +1057,11 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 	}
 	iGripperOpen = true;
 	iNavigationStep = 0;
-	iSmoothAstarPath.empty();
+	iSmoothAstarPath.clear();
 	ownSleep_ms(1000);
 	dPrint(1, "Camera tilted");
 	
 	ownTime_ms_t lastObstacleOccurance = 0;
-	
-	float x_next_stop_meters,Ax_next_stop_meters;
-	float y_next_stop_meters,Ay_next_stop_meters;
 
 	int iterations = 0;
 	while(iDemoActive && iMotionThreadActive && (aIterations == -1 || iterations < aIterations) && iRobotState != RobotStateShutdown) {
@@ -1094,7 +1107,7 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 						ownSleep_ms(20);
 						if (fabs(iBasePoint.x-pose->x) > 0.2 || fabs(iBasePoint.y-pose->y) > 0.2) {
 							iInterface.iMotionCtrl->SetStop();
-							iRobotState = RobotStateShutdown;
+							iPreviousRobotState = iRobotState = RobotStateShutdown;
 							iMotionThreadActive = false;
 							iObstacleHazard = false;
 				            iNextWaypoint.x = iNextWaypoint.y = 0;
@@ -1183,44 +1196,32 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 							
 							updateMapGrid();
 							
-							//dPrint(1,"Map:");
-							//for (int i = 0; i < MAP_ROWS; i++) {
-								//string line;
-								//for (int j = 0; j < MAP_COLS; j++) {
-									//line.append((const char *)(searchMap[i*MAP_COLS+j] == 1 ? "1" : "0"));
-								//}
-								//dPrint(1,"%s",line.c_str());
-							//}
-							
 							//Bias the map because it contains negative values also
 							//But AStar algorithm needs only non-negative values
-							
 							int bias_x = MAP_COLS/2;
 							int bias_y = MAP_ROWS/2;
 							dPrint(1, "Map is biased by %d, %d", bias_x, bias_y);
 							
 							//Current robot position in grid coordinates
-							int grid_x = round((pose->x)/X_RES)+bias_x;
-							int grid_y = round((pose->y)/Y_RES)+bias_y;
+							iRobotGridPoint.x = round(pose->x/X_RES)+bias_x;
+							iRobotGridPoint.y = round(pose->y/Y_RES)+bias_y;
 							
 							//Waypoint position in grid coordinates
-							int p_x = round((iNextWaypoint.x)/X_RES)+bias_x;
-							int p_y = round((iNextWaypoint.y)/Y_RES)+bias_y;
+							iWaypointGridPoint.x = round(iNextWaypoint.x/X_RES)+bias_x;
+							iWaypointGridPoint.y = round(iNextWaypoint.y/Y_RES)+bias_y;
 							
-							dPrint(1, "On the map navigating from %d, %d to %d, %d", grid_x,grid_y,p_x,p_y);
+							dPrint(1, "On the map navigating from %d, %d to %d, %d", iRobotGridPoint.x,iRobotGridPoint.y,iWaypointGridPoint.x,iWaypointGridPoint.y);
 						
 							pathplan2 plan;
-							iAstarPath = plan.get_graph(iMapGrid,MAP_COLS,MAP_ROWS,grid_x,grid_y,p_x,p_y);
+							iAstarPath = plan.get_graph(iMapGrid,MAP_COLS,MAP_ROWS,iRobotGridPoint.x,iRobotGridPoint.y,iWaypointGridPoint.x,iWaypointGridPoint.y);
+																		
+							iSmoothAstarPath = smooth(iAstarPath,WEIGHT_DATA,WEIGHT_SMOOTH,A_TOLERANCE);
 							
 							//Unbias nodes
-							for (int i = 0; i < (int)iAstarPath.size(); i++) {
-								node n = iAstarPath.at(i);
-								n.x -= bias_x;
-								n.y -= bias_y;
-								iAstarPath.at(i) = n;
+							for (EACH_IN_i(iSmoothAstarPath)) {
+								i->x -= bias_x;
+								i->y -= bias_y;
 							}
-											
-							iSmoothAstarPath = smooth(iAstarPath,WEIGHT_DATA,WEIGHT_SMOOTH,A_TOLERANCE);
 							
 							iHasPlan = true;
 							
@@ -1231,13 +1232,10 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 		                if (iNavigationStep < (int)iSmoothAstarPath.size()-1) {
 							       
 							dPrint(1,"Driving to a intermediate waypoint %d of %d", iNavigationStep, iSmoothAstarPath.size());
-							node present = iAstarPath.at(iNavigationStep);
-							Ax_next_stop_meters = present.x * X_RES;
-							Ay_next_stop_meters = present.y * Y_RES;
 							
 							TPose2D next_stop = iSmoothAstarPath.at(iNavigationStep+1);
-							x_next_stop_meters = next_stop.x * X_RES;
-							y_next_stop_meters = next_stop.y * Y_RES;
+							float x_next_stop_meters = next_stop.x * X_RES;
+							float y_next_stop_meters = next_stop.y * Y_RES;
 							
 							if (iMotionState == MotionStateIdle) { 
 								dPrint(1,"Motion Control State: Idle");
@@ -1506,7 +1504,7 @@ void CJ2B2Demo::analyzeCamera()
 	using namespace MaCI::Position;
 	
 	dPrint(1, "Analyzing camera image");
-    if (iLastCameraImage.GetImageDataType() == KImageDataJPEG &&
+    if (iInterface.iImageCameraFront != NULL && iLastCameraImage.GetImageDataType() == KImageDataJPEG &&
         iLastCameraImage.GetImageDataPtr() != NULL) {
 			
 		CImageContainer container;
@@ -1584,13 +1582,10 @@ void CJ2B2Demo::updateMapGrid()
 		for (int j = 0; j < MAP_COLS; j++) {
 			int idx = i*MAP_COLS+j;
 			iMapGrid[idx] = 1;
-			for (vector<TPoint>::iterator iterator = iMap.begin(); iterator < iMap.end(); iterator++) {
-				TPoint point = *iterator;
-				//Biased by min_x, min_y
-				int x = round((point.x)/X_RES);
-				int y = round((point.y)/Y_RES);
-				x += MAP_COLS/2; //Bias by half of the map to have all values positive
-				y += MAP_ROWS/2; //Bias by half of the map to have all values positive
+			for (EACH_IN_k(iMap)) {
+				//Biased by half of the map
+				int x = round(k->x/X_RES)+MAP_COLS/2;
+				int y = round(k->y/Y_RES)+MAP_ROWS/2;
 				if (x == j && y == i) {
 					iMapGrid[idx] = 0;
 				//	dPrintLCYellow(1,"Settign cell %d,%d as an obstacle", x,y);

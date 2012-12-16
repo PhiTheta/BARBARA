@@ -1,5 +1,6 @@
 #include "pathplan2.h"
 #include <math.h>
+#include "owndebug.h"
 
 using namespace std;
 
@@ -22,8 +23,8 @@ vector<node> pathplan2::get_graph(int *map, int width, int height, int sx, int s
 	tmap = new int[w*h];
 	for(int i=0; i<w*h; i++) tmap[i] = map[i];
 
-    if(map[tx+ty*w]==0) { cout << "Target is at obstacle" << endl; return graph; }
-    if(map[sx+sy*w]==0) { cout << "Robot is at obstacle" << endl; return graph; }
+    if(map[tx+ty*w]==0) { dPrintLCRed(1, "Target is at obstacle"); }
+    if(map[sx+sy*w]==0) { dPrintLCRed(1, "Robot is at obstacle"); }
 
     list<node>::iterator ci;
 
@@ -77,7 +78,7 @@ vector<node> pathplan2::get_graph(int *map, int width, int height, int sx, int s
         counter++;
     }
 
-    if(!found) cout << "No route found..\n";
+    if(!found) dPrintLCRed(1, "No route found with A*");
 
     /*
         Pfad rekonstruieren.

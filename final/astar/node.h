@@ -9,8 +9,8 @@ class node
    friend ostream &operator<<(ostream &, const node &);
 
    public:
-      float x;
-      float y;
+      int x;
+      int y;
       double F; // heuristik F = G+H (bewegungskosten+luftlinie)
       double G;
       double H;
