@@ -1184,6 +1184,10 @@ int CJ2B2Demo::RunMotionDemo(int aIterations){
 						
 						if (cnt++ >= 60) {
 							cnt = 0;
+							//Stop before processing image.
+							//Will set speed on the following iteration
+							iInterface.iMotionCtrl->SetStop();
+							ownSleep_ms(20);				
 							analyzeCamera();
 							continue;
 						}
